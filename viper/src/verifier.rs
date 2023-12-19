@@ -14,7 +14,7 @@ use crate::{
     verification_result::{VerificationError, VerificationResult},
 };
 use jni::{objects::JObject, JNIEnv};
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use std::path::PathBuf;
 use viper_sys::wrappers::{scala, viper::*};
 
@@ -105,7 +105,7 @@ impl<'a> Verifier<'a> {
 
     pub fn verify(&mut self, program: Program) -> VerificationResult {
         self.ast_utils.with_local_frame(16, || {
-            debug!(
+            trace!(
                 "Program to be verified:\n{}",
                 self.ast_utils.pretty_print(program)
             );

@@ -5,5 +5,6 @@ mod borrows;
 mod contracts;
 mod interface;
 
+pub(crate) use borrows::BorrowInfo;
 pub(crate) use contracts::{ProcedureContract, ProcedureContractMirDef};
 pub(crate) use interface::{ContractsEncoderInterface, ContractsEncoderState};

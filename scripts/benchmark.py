@@ -37,16 +37,16 @@ def get_prusti_rustc_path_for_benchmark():
 def measure_prusti_time(log_file, input_path, env):
     env = dict(env) # Make a copy.
     prusti_rustc_exe = get_prusti_rustc_path_for_benchmark()
-    if input_path.startswith('prusti-tests/tests/verify/pass'):
+    if input_path.startswith('prusti-tests/tests/verify'):
         env['PRUSTI_CHECK_OVERFLOWS'] = 'false'
-    elif input_path.startswith('prusti-tests/tests/verify_overflow/pass'):
+    elif input_path.startswith('prusti-tests/tests/verify_overflow'):
         env['PRUSTI_CHECK_OVERFLOWS'] = 'true'
     else:
         error('file in an unsupported directory: {}', input_path)
     start_time = time.perf_counter()
     flags = extract_test_compile_flags(input_path)
     command = [prusti_rustc_exe,"--edition=2018", input_path] + flags
-    run_command(command, env=env)
+    run_command(command, env=env, exit_on_error=False)
     end_time = time.perf_counter()
     elapsed = end_time - start_time
     log_file.write(f"command={command}\n")
@@ -67,7 +67,7 @@ def parse_args(args):
     )
     parser.add_argument(
         "--warmup-path",
-        default="prusti-tests/tests/verify/pass/quick/fibonacci.rs",
+        default="prusti-tests/tests/verify_overflow/fail/quick_safe_clients/clients/refcell.rs",
         help="the file to use for warm-up",
     )
     parser.add_argument(

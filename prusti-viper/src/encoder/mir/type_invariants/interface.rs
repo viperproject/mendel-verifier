@@ -17,7 +17,7 @@ pub(crate) trait TypeInvariantEncoderInterface<'tcx> {
         &self,
         ty: ty::Ty<'tcx>,
         encoded_arg: vir::Expr,
-    ) -> EncodingResult<vir::Expr>;
+    ) -> EncodingResult<Option<vir::Expr>>;
 }
 
 impl<'v, 'tcx: 'v> TypeInvariantEncoderInterface<'tcx> for super::super::super::Encoder<'v, 'tcx> {
@@ -25,9 +25,9 @@ impl<'v, 'tcx: 'v> TypeInvariantEncoderInterface<'tcx> for super::super::super::
         &self,
         ty: ty::Ty<'tcx>,
         encoded_arg: vir::Expr,
-    ) -> EncodingResult<vir::Expr> {
+    ) -> EncodingResult<Option<vir::Expr>> {
         if !config::enable_type_invariants() {
-            return Ok(true.into());
+            return Ok(None);
         }
 
         // match snapshot ref/box peeling
@@ -36,7 +36,7 @@ impl<'v, 'tcx: 'v> TypeInvariantEncoderInterface<'tcx> for super::super::super::
         let ty = self.env().tcx().erase_regions_ty(ty);
 
         if !needs_invariant_func(ty) {
-            return Ok(true.into());
+            return Ok(None);
         }
 
         if let Some(encoded) = self
@@ -45,7 +45,7 @@ impl<'v, 'tcx: 'v> TypeInvariantEncoderInterface<'tcx> for super::super::super::
             .borrow()
             .get(ty.kind())
         {
-            return Ok(encoded.clone().apply(vec![encoded_arg]));
+            return Ok(Some(encoded.clone().apply(vec![encoded_arg])));
         }
 
         // handle recursive definitions by inserting a bodyless stub
@@ -63,6 +63,6 @@ impl<'v, 'tcx: 'v> TypeInvariantEncoderInterface<'tcx> for super::super::super::
             .borrow_mut()
             .insert(ty.kind().clone(), encoded.clone());
 
-        Ok(encoded.apply(vec![encoded_arg]))
+        Ok(Some(encoded.apply(vec![encoded_arg])))
     }
 }

@@ -9,6 +9,7 @@ use serde::{ser::SerializeMap, Serialize, Serializer};
 use std::{collections::BTreeMap, fmt};
 
 /// Records the state of the analysis at every program point and CFG edge of `mir`.
+#[derive(Clone)]
 pub struct PointwiseState<'mir, 'tcx: 'mir, S: Serialize> {
     state_before: FxHashMap<mir::Location, S>,
     /// Maps each basic block to a map of its successor blocks to the state on the CFG edge.

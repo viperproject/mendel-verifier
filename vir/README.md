@@ -13,4 +13,3 @@ The build script will use `vir-gen` to copy the definitions of `defs/` into `gen
 The transformations between VIR layers are:
 * `high` --(type unifications)--> `typed` --(fold-unfold generation)--> `middle` --> `low`
 * `polymorphic` --(monomorphization)--> `legacy`
-

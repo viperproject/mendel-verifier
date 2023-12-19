@@ -14,14 +14,16 @@ pub struct DefSpecsDecoder<'a, 'tcx> {
     opaque: opaque::MemDecoder<'a>,
     tcx: TyCtxt<'tcx>,
     ty_rcache: FxHashMap<usize, Ty<'tcx>>,
+    debug_path: &'a std::path::PathBuf,
 }
 
 impl<'a, 'tcx> DefSpecsDecoder<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, data: &'a [u8]) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, data: &'a [u8], debug_path: &'a std::path::PathBuf) -> Self {
         DefSpecsDecoder {
             opaque: opaque::MemDecoder::new(data, 0),
             tcx,
             ty_rcache: Default::default(),
+            debug_path,
         }
     }
 
@@ -32,7 +34,11 @@ impl<'a, 'tcx> DefSpecsDecoder<'a, 'tcx> {
             cstore.stable_crate_id_to_crate_num(hash.stable_crate_id())
         });
         if result.is_err() {
-            panic!("A compiled dependency is out of sync. Try deleting the target folder (`cargo clean`).")
+            panic!(
+                "A compiled dependency is out of sync ({}). Try deleting the target folder \
+                (`cargo clean`).",
+                self.debug_path.display()
+            );
         }
         // Get `DefId`
         self.tcx.def_path_hash_to_def_id(hash, &mut || {

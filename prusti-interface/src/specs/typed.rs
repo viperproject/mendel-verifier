@@ -16,6 +16,7 @@ pub struct DefSpecificationMap {
     pub proc_specs: FxHashMap<DefId, SpecGraph<ProcedureSpecification>>,
     pub loop_specs: FxHashMap<DefId, LoopSpecification>,
     pub type_specs: FxHashMap<DefId, TypeSpecification>,
+    pub ownership_specs: FxHashMap<DefId, Vec<OwnershipSpecification>>,
     pub prusti_assertions: FxHashMap<DefId, PrustiAssertion>,
     pub prusti_assumptions: FxHashMap<DefId, PrustiAssumption>,
     pub ghost_begin: FxHashMap<DefId, GhostBegin>,
@@ -29,6 +30,10 @@ impl DefSpecificationMap {
 
     pub fn get_loop_spec(&self, def_id: &DefId) -> Option<&LoopSpecification> {
         self.loop_specs.get(def_id)
+    }
+
+    pub fn get_ownership_spec(&self, def_id: &DefId) -> Option<&Vec<OwnershipSpecification>> {
+        self.ownership_specs.get(def_id)
     }
 
     pub fn get_proc_spec(&self, def_id: &DefId) -> Option<&SpecGraph<ProcedureSpecification>> {
@@ -60,7 +65,7 @@ impl DefSpecificationMap {
     ) -> (
         // Specs
         Vec<DefId>,
-        // Pure fns
+        // Pure fns (stable, unstable, memory)
         Vec<DefId>,
         // Predicates
         Vec<DefId>,
@@ -226,7 +231,12 @@ impl ProcedureSpecification {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable)]
 pub enum ProcedureSpecificationKind {
     Impure,
+    /// Pure stable
     Pure,
+    /// Pure memory
+    PureMemory,
+    /// Pure unstable
+    PureUnstable,
     /// The specification is a predicate with the enclosed body.
     /// The body can be None to account for abstract predicates.
     Predicate(Option<DefId>),
@@ -242,6 +252,8 @@ impl Display for ProcedureSpecificationKind {
         match self {
             ProcedureSpecificationKind::Impure => write!(f, "Impure"),
             ProcedureSpecificationKind::Pure => write!(f, "Pure"),
+            ProcedureSpecificationKind::PureUnstable => write!(f, "PureUnstable"),
+            ProcedureSpecificationKind::PureMemory => write!(f, "PureMemory"),
             ProcedureSpecificationKind::Predicate(_) => write!(f, "Predicate"),
         }
     }
@@ -256,6 +268,54 @@ impl ProcedureSpecificationKind {
 pub enum LoopSpecification {
     Invariant(LocalDefId),
     Variant(LocalDefId),
+}
+
+#[derive(Debug, Clone, TyEncodable, TyDecodable)]
+pub enum OwnershipKind {
+    WriteRef,
+    LocalRef,
+    ReadRef,
+    Unique,
+    Local,
+    Immutable,
+    Read,
+    Write,
+    NoReadRef,
+    NoWriteRef,
+}
+
+impl TryFrom<&str> for OwnershipKind {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, ()> {
+        match value {
+            "writeRef" => Ok(OwnershipKind::WriteRef),
+            "localRef" => Ok(OwnershipKind::LocalRef),
+            "readRef" => Ok(OwnershipKind::ReadRef),
+            "unique" => Ok(OwnershipKind::Unique),
+            "local" => Ok(OwnershipKind::Local),
+            "immutable" => Ok(OwnershipKind::Immutable),
+            "read" => Ok(OwnershipKind::Read),
+            "write" => Ok(OwnershipKind::Write),
+            "noReadRef" => Ok(OwnershipKind::NoReadRef),
+            "noWriteRef" => Ok(OwnershipKind::NoWriteRef),
+            _ => Err(()),
+        }
+    }
+}
+
+/// Specification of a type.
+#[derive(Debug, Clone, TyEncodable, TyDecodable)]
+pub struct OwnershipSpecification {
+    // DefId of type defn to which the spec was attached.
+    // Currently identical to the key in `type_specs`, but once
+    // `extern_spec` for type invs is supported it could differ.
+    pub source: DefId,
+    pub self_ownership: OwnershipKind,
+    pub condition: Option<LocalDefId>,
+    pub target_ownership: OwnershipKind,
+    pub target: LocalDefId,
+    pub target_parent: LocalDefId,
 }
 
 /// Specification of a type.
@@ -645,7 +705,10 @@ impl SpecificationItem<ProcedureSpecificationKind> {
 
         Ok(matches!(
             self.extract_with_selective_replacement(),
-            Some(ProcedureSpecificationKind::Pure) | Some(ProcedureSpecificationKind::Predicate(_))
+            Some(ProcedureSpecificationKind::Pure)
+                | Some(ProcedureSpecificationKind::PureMemory)
+                | Some(ProcedureSpecificationKind::PureUnstable)
+                | Some(ProcedureSpecificationKind::Predicate(_))
         ))
     }
 
@@ -673,9 +736,17 @@ impl SpecificationItem<ProcedureSpecificationKind> {
         use ProcedureSpecificationKind::*;
         if let SpecificationItem::Refined(base, refined) = self {
             match (base, refined) {
-                (Impure, Impure) | (Impure, Pure) | (Pure, Pure) | (Predicate(_), Predicate(_)) => {
-                    Ok(())
-                }
+                (Impure, Impure)
+                | (Impure, PureUnstable)
+                | (Impure, PureMemory)
+                | (Impure, Pure)
+                | (PureUnstable, PureUnstable)
+                | (PureUnstable, PureMemory)
+                | (PureUnstable, Pure)
+                | (PureMemory, PureMemory)
+                | (PureMemory, Pure)
+                | (Pure, Pure)
+                | (Predicate(_), Predicate(_)) => Ok(()),
                 _ => Err(ProcedureSpecificationKindError::InvalidSpecKindRefinement(
                     *base, *refined,
                 )),

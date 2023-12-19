@@ -238,6 +238,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5"
           ],
           "owned": [
@@ -252,6 +253,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5"
           ],
           "owned": [
@@ -266,6 +268,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5"
           ],
           "owned": [
@@ -280,6 +283,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5",
             "_6"
           ],
@@ -295,6 +299,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5",
             "_6"
           ],
@@ -310,6 +315,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5",
             "_6"
           ],
@@ -325,6 +331,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5",
             "_6"
           ],
@@ -340,6 +347,7 @@ Result for function main():
     {
       "accessible": [
         "(_1.2: std::boxed::Box<u32>)",
+        "_4",
         "_5",
         "_8"
       ],
@@ -362,6 +370,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5",
             "_7"
           ],
@@ -381,6 +390,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5",
             "_7"
           ],
@@ -397,6 +407,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5",
             "_7"
           ],
@@ -413,6 +424,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5"
           ],
           "owned": [
@@ -427,6 +439,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5"
           ],
           "owned": [
@@ -441,6 +454,7 @@ Result for function main():
         {
           "accessible": [
             "(_1.2: std::boxed::Box<u32>)",
+            "_4",
             "_5"
           ],
           "owned": [
@@ -455,6 +469,7 @@ Result for function main():
     {
       "accessible": [
         "(_1.2: std::boxed::Box<u32>)",
+        "_4",
         "_10"
       ],
       "owned": [

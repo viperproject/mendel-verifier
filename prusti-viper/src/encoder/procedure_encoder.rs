@@ -841,7 +841,6 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
                 "{:?} is conditional branch in loop {:?}",
                 before_invariant_block, loop_head
             );
-            let loop_head_span = self.mir_encoder.get_span_of_basic_block(loop_head);
             return Err(SpannedEncodingError::incorrect(
                 "the loop invariant cannot be in a conditional branch of the loop",
                 loop_body
@@ -1156,25 +1155,26 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
         // Final step: havoc Viper local variables assigned in the encoding of the loop body
         let vars = collect_assigned_vars(&self.cfg_method, end_body_block, inv_pre_block);
         for var in vars {
-            let builtin_method = match var.typ {
-                vir::Type::Int => BuiltinMethodKind::HavocInt,
-                vir::Type::Bool => BuiltinMethodKind::HavocBool,
-                vir::Type::Float(vir::Float::F32) => BuiltinMethodKind::HavocF32,
-                vir::Type::Float(vir::Float::F64) => BuiltinMethodKind::HavocF64,
-                vir::Type::BitVector(value) => BuiltinMethodKind::HavocBV(value),
-                vir::Type::TypedRef(_) => BuiltinMethodKind::HavocRef,
-                vir::Type::TypeVar(_) => BuiltinMethodKind::HavocRef,
-                vir::Type::Domain(_) => BuiltinMethodKind::HavocRef,
-                vir::Type::Snapshot(_) => BuiltinMethodKind::HavocRef,
-                vir::Type::Seq(_) => BuiltinMethodKind::HavocRef,
-                vir::Type::Map(_) => BuiltinMethodKind::HavocRef,
+            let builtin_method = match &var.typ {
+                vir::Type::Int
+                | vir::Type::Bool
+                | vir::Type::Float(_)
+                | vir::Type::BitVector(_) => BuiltinMethodKind::Havoc(var.typ.clone()),
+                vir::Type::TypedRef(_)
+                | vir::Type::TypeVar(_)
+                | vir::Type::Domain(_)
+                | vir::Type::Snapshot(_)
+                | vir::Type::Seq(_)
+                | vir::Type::Map(_) => BuiltinMethodKind::Havoc(vir::Type::Ref),
                 vir::Type::Ref => return Err(SpannedEncodingError::internal(
                     format!("unexpected type of local variable {var:?}"),
                     self.mir.span,
                 )),
             };
+            let method_name = self.encoder.encode_builtin_method_use(&builtin_method)
+                .with_span(loop_head_span)?;
             let stmt = vir::Stmt::MethodCall( vir::MethodCall {
-                method_name: self.encoder.encode_builtin_method_use(builtin_method).with_span(loop_head_span)?,
+                method_name,
                 arguments: vec![],
                 targets: vec![var],
             });
@@ -3260,12 +3260,13 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
                 Some(place) => {
                     debug!("arg: {} {}", arg_place, place);
                     if !self.encoder.is_pure(called_def_id, Some(substs)) {
-                        type_invs.push(
-                            self.encoder.encode_invariant_func_app(
-                                arg_ty,
-                                vir::Expr::snap_app(place.clone()),
-                            ).with_span(call_site_span)?,
-                        );
+                        let opt_inv = self.encoder.encode_invariant_func_app(
+                            arg_ty,
+                            vir::Expr::snap_app(place.clone()),
+                        ).with_span(call_site_span)?;
+                        if let Some(inv) = opt_inv {
+                            type_invs.push(inv);
+                        }
                     }
                     fake_exprs.insert(arg_place, place);
                 }
@@ -3908,12 +3909,13 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
             // assumes that invariants for raw_ref types are always empty.
             let ty = self.locals.get_type(*arg);
             if !ty.is_unsafe_ptr() && !self.encoder.is_pure(contract.def_id, Some(substs)) {
-                invs_spec.push(
-                    self.encoder.encode_invariant_func_app(
-                        ty,
-                        self.encode_prusti_local(*arg).into(),
-                    ).with_span(precondition_spans.clone())?
-                );
+                let opt_inv = self.encoder.encode_invariant_func_app(
+                    ty,
+                    self.encode_prusti_local(*arg).into(),
+                ).with_span(precondition_spans.clone())?;
+                if let Some(inv) = opt_inv {
+                    invs_spec.push(inv);
+                }
             }
         }
         Ok((
@@ -4165,11 +4167,15 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
                 let vir_access =
                     vir::Expr::pred_permission(place_expr.clone().old(label), perm_amount).unwrap();
                 if !self.encoder.is_pure(contract.def_id, Some(substs)) {
-                    let inv = self
+                    let opt_inv = self
                         .encoder
                         .encode_invariant_func_app(place_ty, place_expr.old(label))
                         .with_span(span)?;
-                    Ok(vir::Expr::and(vir_access, inv))
+                    if let Some(inv) = opt_inv {
+                        Ok(vir::Expr::and(vir_access, inv))
+                    } else {
+                        Ok(vir_access)
+                    }
                 } else {
                     Ok(vir_access)
                 }
@@ -4366,12 +4372,14 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
                 Mutability::Mut => {
                     add_type_spec(vir::PermAmount::Write);
                     if !self.encoder.is_pure(contract.def_id, Some(substs)) {
-                        let inv = self
+                        let opt_inv = self
                             .encoder
                             .encode_invariant_func_app(place_ty, old_place_expr)
                             // TODO: Use a better span
                             .with_span(self.mir.span)?;
-                        invs_spec.push(inv);
+                        if let Some(inv) = opt_inv {
+                            invs_spec.push(inv);
+                        }
                     }
                 }
             };
@@ -4461,12 +4469,13 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
 
         // Encode invariant for return value
         if !self.encoder.is_pure(contract.def_id, Some(substs)) {
-            invs_spec.push(
-                self.encoder.encode_invariant_func_app(
-                    self.locals.get_type(contract.returned_value),
-                    encoded_return,
-                ).with_span(postcondition_span)?
-            );
+            let opt_inv = self.encoder.encode_invariant_func_app(
+                self.locals.get_type(contract.returned_value),
+                encoded_return,
+            ).with_span(postcondition_span)?;
+            if let Some(inv) = opt_inv {
+                invs_spec.push(inv);
+            }
         }
 
         let full_func_spec = func_spec.into_iter().conjoin()
@@ -5218,11 +5227,13 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
             if let vir::Expr::PredicateAccessPredicate( vir::PredicateAccessPredicate {predicate_type, argument, ..}) = permission {
                 let ty = self.encoder.decode_type_predicate_type(predicate_type)?;
                 if !self.encoder.is_pure(self.proc_def_id, Some(self.substs)) {
-                    let inv_func_app = self.encoder.encode_invariant_func_app(
+                    let opt_inv = self.encoder.encode_invariant_func_app(
                         ty,
                         (**argument).clone(),
                     )?;
-                    invs_spec.push(inv_func_app);
+                    if let Some(inv) = opt_inv {
+                        invs_spec.push(inv);
+                    }
                 }
             }
         }
@@ -6412,7 +6423,7 @@ impl<'p, 'v: 'p, 'tcx: 'v> ProcedureEncoder<'p, 'v, 'tcx> {
         debug!("Encode havoc {:?}", dst);
         let havoc_ref_method_name = self
             .encoder
-            .encode_builtin_method_use(BuiltinMethodKind::HavocRef)?;
+            .encode_builtin_method_use(&BuiltinMethodKind::Havoc(vir::Type::Ref))?;
         if let vir::Expr::Local( vir::Local {variable: ref dst_local_var, ..} ) = dst {
             Ok(vec![vir::Stmt::MethodCall( vir::MethodCall {
                 method_name: havoc_ref_method_name,

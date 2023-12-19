@@ -1,0 +1,289 @@
+Analyzing file $DIR/mutex.rs using LocallySharedAnalysis...
+Result for function test():
+{
+  "bb0": [
+    [
+      [
+        "state:",
+        {
+          "_1": []
+        },
+        "statement: StorageLive(_2)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "_1": []
+    },
+    "terminator: _2 = std::sync::Mutex::<i32>::new(const 123_i32) -> [return: bb1, unwind: bb5]",
+    {
+      "bb1": [
+        "state:",
+        {
+          "_1": [],
+          "_2": []
+        }
+      ],
+      "bb5": [
+        "state:",
+        {}
+      ]
+    }
+  ],
+  "bb1": [
+    [
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": []
+        },
+        "statement: FakeRead(ForLet(None), _2)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": []
+        },
+        "statement: StorageLive(_3)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": []
+        },
+        "statement: _3 = &_2"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": [
+            "_3"
+          ],
+          "_3": []
+        },
+        "statement: FakeRead(ForLet(None), _3)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": [
+            "_3"
+          ],
+          "_3": []
+        },
+        "statement: StorageLive(_4)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": [
+            "_3"
+          ],
+          "_3": []
+        },
+        "statement: StorageLive(_5)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": [
+            "_3"
+          ],
+          "_3": []
+        },
+        "statement: _5 = _3"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "_1": [],
+      "_2": [
+        "_3",
+        "_5"
+      ],
+      "_5": []
+    },
+    "terminator: _4 = unknown::<&std::sync::Mutex<i32>>(move _5) -> [return: bb2, unwind: bb5]",
+    {
+      "bb2": [
+        "state:",
+        {
+          "_1": [],
+          "_2": [],
+          "_4": []
+        }
+      ],
+      "bb5": [
+        "state:",
+        {}
+      ]
+    }
+  ],
+  "bb2": [
+    [
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": [],
+          "_4": []
+        },
+        "statement: StorageDead(_5)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": [],
+          "_4": []
+        },
+        "statement: StorageDead(_4)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": []
+        },
+        "statement: StorageLive(_6)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": []
+        },
+        "statement: StorageLive(_7)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_2": []
+        },
+        "statement: _7 = &_2"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "_1": [],
+      "_2": [
+        "_7"
+      ],
+      "_7": []
+    },
+    "terminator: _6 = std::sync::Mutex::<i32>::lock(move _7) -> [return: bb3, unwind: bb5]",
+    {
+      "bb3": [
+        "state:",
+        {
+          "_1": [],
+          "_6": []
+        }
+      ],
+      "bb5": [
+        "state:",
+        {}
+      ]
+    }
+  ],
+  "bb3": [
+    [
+      [
+        "state:",
+        {
+          "_1": [],
+          "_6": []
+        },
+        "statement: StorageDead(_7)"
+      ],
+      [
+        "state:",
+        {
+          "_1": [],
+          "_6": []
+        },
+        "statement: FakeRead(ForLet(None), _6)"
+      ],
+      [
+        "state:",
+        {
+          "_1": []
+        },
+        "statement: _0 = const ()"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "_0": [],
+      "_1": []
+    },
+    "terminator: drop(_6) -> [return: bb4, unwind: bb5]",
+    {
+      "bb4": [
+        "state:",
+        {
+          "_0": [],
+          "_1": [],
+          "_2": []
+        }
+      ],
+      "bb5": [
+        "state:",
+        {}
+      ]
+    }
+  ],
+  "bb4": [
+    [
+      [
+        "state:",
+        {
+          "_0": [],
+          "_1": [],
+          "_2": []
+        },
+        "statement: StorageDead(_6)"
+      ],
+      [
+        "state:",
+        {
+          "_0": [],
+          "_1": [],
+          "_2": []
+        },
+        "statement: StorageDead(_3)"
+      ],
+      [
+        "state:",
+        {
+          "_0": [],
+          "_1": [],
+          "_2": []
+        },
+        "statement: StorageDead(_2)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "_0": [],
+      "_1": []
+    },
+    "terminator: return",
+    {}
+  ],
+  "bb5": [
+    [],
+    "state before terminator:",
+    {},
+    "terminator: resume",
+    {}
+  ]
+}

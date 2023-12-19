@@ -10,6 +10,10 @@ Result for function break_it():
             "_1",
             "_2"
           ],
+          "frame_locally_shared": [
+            "_1",
+            "_2"
+          ],
           "frame_owned": [
             "_1",
             "_2"
@@ -21,6 +25,10 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [
+            "_1",
+            "_2"
+          ],
+          "frame_locally_shared": [
             "_1",
             "_2"
           ],
@@ -37,6 +45,9 @@ Result for function break_it():
           "frame_accessible": [
             "_1"
           ],
+          "frame_locally_shared": [
+            "_1"
+          ],
           "frame_owned": [
             "_1"
           ]
@@ -49,6 +60,9 @@ Result for function break_it():
       "frame_accessible": [
         "_1"
       ],
+      "frame_locally_shared": [
+        "_1"
+      ],
       "frame_owned": [
         "_1"
       ]
@@ -59,6 +73,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ],
@@ -66,6 +81,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -80,6 +96,10 @@ Result for function break_it():
             "_1",
             "_3"
           ],
+          "frame_locally_shared": [
+            "_1",
+            "_3"
+          ],
           "frame_owned": [
             "_1",
             "_3"
@@ -91,6 +111,10 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [
+            "_1",
+            "_3"
+          ],
+          "frame_locally_shared": [
             "_1",
             "_3"
           ],
@@ -107,6 +131,9 @@ Result for function break_it():
           "frame_accessible": [
             "_1"
           ],
+          "frame_locally_shared": [
+            "_1"
+          ],
           "frame_owned": [
             "_1"
           ]
@@ -117,6 +144,9 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
             "_1"
           ],
           "frame_owned": [
@@ -131,6 +161,9 @@ Result for function break_it():
           "frame_accessible": [
             "_1"
           ],
+          "frame_locally_shared": [
+            "_1"
+          ],
           "frame_owned": [
             "_1"
           ]
@@ -141,6 +174,9 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
             "_1"
           ],
           "frame_owned": [
@@ -155,6 +191,7 @@ Result for function break_it():
           "frame_accessible": [
             "_1"
           ],
+          "frame_locally_shared": [],
           "frame_owned": []
         },
         "statement: _8 = &(*_1)"
@@ -162,8 +199,15 @@ Result for function break_it():
     ],
     "state before terminator:",
     {
-      "frame_accessible": [],
-      "frame_owned": []
+      "frame_accessible": [
+        "_1"
+      ],
+      "frame_locally_shared": [
+        "_1"
+      ],
+      "frame_owned": [
+        "_1"
+      ]
     },
     "terminator: _7 = std::cell::RefCell::<i32>::borrow_mut(move _8) -> [return: bb2, unwind: bb8]",
     {
@@ -171,6 +215,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ],
@@ -178,6 +223,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -188,8 +234,15 @@ Result for function break_it():
       [
         "state:",
         {
-          "frame_accessible": [],
-          "frame_owned": []
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
         },
         "statement: _6 = &mut _7"
       ],
@@ -197,9 +250,15 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_1",
             "_6"
           ],
           "frame_owned": [
+            "_1",
             "_6"
           ]
         },
@@ -208,8 +267,15 @@ Result for function break_it():
     ],
     "state before terminator:",
     {
-      "frame_accessible": [],
-      "frame_owned": []
+      "frame_accessible": [
+        "_1"
+      ],
+      "frame_locally_shared": [
+        "_1"
+      ],
+      "frame_owned": [
+        "_1"
+      ]
     },
     "terminator: _5 = <std::cell::RefMut<'_, i32> as std::ops::DerefMut>::deref_mut(move _6) -> [return: bb3, unwind: bb6]",
     {
@@ -217,6 +283,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ],
@@ -224,6 +291,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -235,9 +303,15 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [
+            "_1",
+            "_5"
+          ],
+          "frame_locally_shared": [
+            "_1",
             "_5"
           ],
           "frame_owned": [
+            "_1",
             "_5"
           ]
         },
@@ -246,16 +320,30 @@ Result for function break_it():
       [
         "state:",
         {
-          "frame_accessible": [],
-          "frame_owned": []
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
         },
         "statement: (*_5) = const 2_i32"
       ]
     ],
     "state before terminator:",
     {
-      "frame_accessible": [],
-      "frame_owned": []
+      "frame_accessible": [
+        "_1"
+      ],
+      "frame_locally_shared": [
+        "_1"
+      ],
+      "frame_owned": [
+        "_1"
+      ]
     },
     "terminator: drop(_7) -> [return: bb4, unwind: bb8]",
     {
@@ -263,6 +351,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ],
@@ -270,6 +359,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -280,24 +370,45 @@ Result for function break_it():
       [
         "state:",
         {
-          "frame_accessible": [],
-          "frame_owned": []
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
         },
         "statement: StorageDead(_7)"
       ],
       [
         "state:",
         {
-          "frame_accessible": [],
-          "frame_owned": []
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
         },
         "statement: StorageDead(_5)"
       ],
       [
         "state:",
         {
-          "frame_accessible": [],
-          "frame_owned": []
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
         },
         "statement: _0 = const ()"
       ]
@@ -305,10 +416,16 @@ Result for function break_it():
     "state before terminator:",
     {
       "frame_accessible": [
-        "_0"
+        "_0",
+        "_1"
+      ],
+      "frame_locally_shared": [
+        "_0",
+        "_1"
       ],
       "frame_owned": [
-        "_0"
+        "_0",
+        "_1"
       ]
     },
     "terminator: drop(_2) -> [return: bb5, unwind: bb9]",
@@ -317,6 +434,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ],
@@ -324,6 +442,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -334,10 +453,16 @@ Result for function break_it():
     "state before terminator:",
     {
       "frame_accessible": [
-        "_0"
+        "_0",
+        "_1"
+      ],
+      "frame_locally_shared": [
+        "_0",
+        "_1"
       ],
       "frame_owned": [
-        "_0"
+        "_0",
+        "_1"
       ]
     },
     "terminator: return",
@@ -348,6 +473,7 @@ Result for function break_it():
     "state before terminator:",
     {
       "frame_accessible": [],
+      "frame_locally_shared": [],
       "frame_owned": []
     },
     "terminator: drop(_7) -> bb8",
@@ -356,6 +482,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -366,6 +493,7 @@ Result for function break_it():
     "state before terminator:",
     {
       "frame_accessible": [],
+      "frame_locally_shared": [],
       "frame_owned": []
     },
     "terminator: drop(_4) -> bb8",
@@ -374,6 +502,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -384,6 +513,7 @@ Result for function break_it():
     "state before terminator:",
     {
       "frame_accessible": [],
+      "frame_locally_shared": [],
       "frame_owned": []
     },
     "terminator: drop(_2) -> bb9",
@@ -392,6 +522,7 @@ Result for function break_it():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -402,6 +533,7 @@ Result for function break_it():
     "state before terminator:",
     {
       "frame_accessible": [],
+      "frame_locally_shared": [],
       "frame_owned": []
     },
     "terminator: resume",
@@ -416,6 +548,7 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         },
         "statement: StorageLive(_1)"
@@ -424,6 +557,7 @@ Result for function main():
     "state before terminator:",
     {
       "frame_accessible": [],
+      "frame_locally_shared": [],
       "frame_owned": []
     },
     "terminator: _1 = std::cell::RefCell::<i32>::new(const 0_i32) -> [return: bb1, unwind: bb5]",
@@ -432,6 +566,7 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ],
@@ -439,6 +574,7 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -452,6 +588,9 @@ Result for function main():
           "frame_accessible": [
             "_1"
           ],
+          "frame_locally_shared": [
+            "_1"
+          ],
           "frame_owned": []
         },
         "statement: FakeRead(ForLet(None), _1)"
@@ -460,6 +599,9 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
             "_1"
           ],
           "frame_owned": [
@@ -474,6 +616,9 @@ Result for function main():
           "frame_accessible": [
             "_1"
           ],
+          "frame_locally_shared": [
+            "_1"
+          ],
           "frame_owned": [
             "_1"
           ]
@@ -484,6 +629,9 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
             "_1"
           ],
           "frame_owned": []
@@ -497,6 +645,9 @@ Result for function main():
             "_1",
             "_3"
           ],
+          "frame_locally_shared": [
+            "_1"
+          ],
           "frame_owned": []
         },
         "statement: _2 = &(*_3)"
@@ -505,6 +656,10 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [
+            "_1",
+            "_2"
+          ],
+          "frame_locally_shared": [
             "_1",
             "_2"
           ],
@@ -521,6 +676,10 @@ Result for function main():
             "_1",
             "_2"
           ],
+          "frame_locally_shared": [
+            "_1",
+            "_2"
+          ],
           "frame_owned": [
             "_2"
           ]
@@ -531,6 +690,10 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [
+            "_1",
+            "_2"
+          ],
+          "frame_locally_shared": [
             "_1",
             "_2"
           ],
@@ -547,6 +710,9 @@ Result for function main():
         "_1",
         "_2"
       ],
+      "frame_locally_shared": [
+        "_2"
+      ],
       "frame_owned": [
         "_2"
       ]
@@ -557,6 +723,7 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ],
@@ -564,6 +731,7 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -576,6 +744,10 @@ Result for function main():
         {
           "frame_accessible": [
             "_1",
+            "_2",
+            "_4"
+          ],
+          "frame_locally_shared": [
             "_2",
             "_4"
           ],
@@ -592,6 +764,7 @@ Result for function main():
       "frame_accessible": [
         "_1"
       ],
+      "frame_locally_shared": [],
       "frame_owned": []
     },
     "terminator: _0 = break_it(move _2, move _4) -> [return: bb3, unwind: bb4]",
@@ -600,6 +773,7 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ],
@@ -607,6 +781,7 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -621,6 +796,10 @@ Result for function main():
             "_0",
             "_1"
           ],
+          "frame_locally_shared": [
+            "_0",
+            "_1"
+          ],
           "frame_owned": [
             "_0",
             "_1"
@@ -632,6 +811,10 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [
+            "_0",
+            "_1"
+          ],
+          "frame_locally_shared": [
             "_0",
             "_1"
           ],
@@ -649,6 +832,10 @@ Result for function main():
             "_0",
             "_1"
           ],
+          "frame_locally_shared": [
+            "_0",
+            "_1"
+          ],
           "frame_owned": [
             "_0",
             "_1"
@@ -660,6 +847,9 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [
+            "_0"
+          ],
+          "frame_locally_shared": [
             "_0"
           ],
           "frame_owned": [
@@ -674,6 +864,9 @@ Result for function main():
       "frame_accessible": [
         "_0"
       ],
+      "frame_locally_shared": [
+        "_0"
+      ],
       "frame_owned": [
         "_0"
       ]
@@ -686,6 +879,7 @@ Result for function main():
     "state before terminator:",
     {
       "frame_accessible": [],
+      "frame_locally_shared": [],
       "frame_owned": []
     },
     "terminator: drop(_4) -> bb5",
@@ -694,6 +888,7 @@ Result for function main():
         "state:",
         {
           "frame_accessible": [],
+          "frame_locally_shared": [],
           "frame_owned": []
         }
       ]
@@ -704,6 +899,7 @@ Result for function main():
     "state before terminator:",
     {
       "frame_accessible": [],
+      "frame_locally_shared": [],
       "frame_owned": []
     },
     "terminator: resume",

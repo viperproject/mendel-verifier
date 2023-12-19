@@ -113,7 +113,7 @@ pub fn process_verification_request<'v, 't: 'v>(
         // Don't cache Java exceptions, which might be due to misconfigured paths.
         if config::enable_cache() && !matches!(result, VerificationResult::JavaException(_)) {
             info!(
-                "Storing new cached result {:?} for program {}",
+                "Storing new cached result {} for program {}",
                 &result,
                 request.program.get_name()
             );
@@ -153,7 +153,7 @@ fn new_viper_verifier<'v, 't: 'v>(
                     log_dir_str.to_string(),
                     "--printMethodCFGs".to_string(),
                     //"--printTranslatedProgram".to_string(),
-                ])
+                ]);
             }
             VerificationBackend::Carbon => verifier_args.extend(vec![
                 "--boogieOpt".to_string(),

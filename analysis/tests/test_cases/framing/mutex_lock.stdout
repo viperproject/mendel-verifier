@@ -1,0 +1,1140 @@
+Analyzing file $DIR/mutex_lock.rs using FramingAnalysis...
+Result for function lock():
+{
+  "bb0": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        },
+        "statement: StorageLive(_1)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [],
+      "frame_locally_shared": [],
+      "frame_owned": []
+    },
+    "terminator: _1 = std::sync::Mutex::<i32>::new(const 123_i32) -> [return: bb1, unwind: bb15]",
+    {
+      "bb1": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb15": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb1": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": []
+        },
+        "statement: FakeRead(ForLet(None), _1)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
+        },
+        "statement: StorageLive(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
+        },
+        "statement: StorageLive(_4)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
+        },
+        "statement: StorageLive(_5)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": []
+        },
+        "statement: _5 = &_1"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1"
+      ],
+      "frame_locally_shared": [],
+      "frame_owned": []
+    },
+    "terminator: _4 = std::sync::Mutex::<i32>::lock(move _5) -> [return: bb2, unwind: bb15]",
+    {
+      "bb15": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb2": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb2": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_4"
+          ],
+          "frame_locally_shared": [
+            "_4"
+          ],
+          "frame_owned": [
+            "_4"
+          ]
+        },
+        "statement: StorageDead(_5)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_4"
+          ],
+          "frame_locally_shared": [
+            "_4"
+          ],
+          "frame_owned": []
+        },
+        "statement: FakeRead(ForMatchedPlace(None), _4)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_4"
+          ],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        },
+        "statement: _6 = discriminant(_4)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_4"
+      ],
+      "frame_locally_shared": [
+        "_4"
+      ],
+      "frame_owned": [
+        "_4"
+      ]
+    },
+    "terminator: switchInt(move _6) -> [0: bb3, otherwise: bb5]",
+    {
+      "bb3": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb5": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb3": [
+    [],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_4",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_4",
+        "_6"
+      ],
+      "frame_owned": [
+        "_4",
+        "_6"
+      ]
+    },
+    "terminator: falseEdge -> [real: bb4, imaginary: bb5]",
+    {
+      "bb4": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb5": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb4": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_6"
+          ],
+          "frame_owned": [
+            "_6"
+          ]
+        },
+        "statement: _3 = move ((_4 as Ok).0: std::sync::MutexGuard<'_, i32>)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_3",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_3",
+        "_6"
+      ],
+      "frame_owned": [
+        "_3",
+        "_6"
+      ]
+    },
+    "terminator: drop(_4) -> [return: bb8, unwind: bb14]",
+    {
+      "bb14": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb8": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb5": [
+    [],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_6"
+      ],
+      "frame_owned": [
+        "_6"
+      ]
+    },
+    "terminator: drop(_4) -> [return: bb6, unwind: bb14]",
+    {
+      "bb14": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb6": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb6": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_1",
+            "_6"
+          ],
+          "frame_owned": [
+            "_1",
+            "_6"
+          ]
+        },
+        "statement: StorageDead(_4)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_1",
+        "_6"
+      ],
+      "frame_owned": [
+        "_1",
+        "_6"
+      ]
+    },
+    "terminator: drop(_3) -> [return: bb7, unwind: bb15]",
+    {
+      "bb15": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb7": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb7": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_1",
+            "_6"
+          ],
+          "frame_owned": [
+            "_1",
+            "_6"
+          ]
+        },
+        "statement: StorageDead(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_1",
+            "_6"
+          ],
+          "frame_owned": [
+            "_1",
+            "_6"
+          ]
+        },
+        "statement: _0 = const ()"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_0",
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_0",
+            "_1",
+            "_6"
+          ],
+          "frame_owned": [
+            "_0",
+            "_1",
+            "_6"
+          ]
+        },
+        "statement: StorageDead(_1)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_0",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_0",
+        "_6"
+      ],
+      "frame_owned": [
+        "_0",
+        "_6"
+      ]
+    },
+    "terminator: goto -> bb13",
+    {
+      "bb13": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb8": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_3",
+            "_6"
+          ],
+          "frame_owned": [
+            "_3",
+            "_6"
+          ]
+        },
+        "statement: StorageDead(_4)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_3",
+            "_6"
+          ],
+          "frame_owned": [
+            "_3",
+            "_6"
+          ]
+        },
+        "statement: StorageLive(_7)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_3",
+            "_6"
+          ],
+          "frame_owned": [
+            "_3",
+            "_6"
+          ]
+        },
+        "statement: StorageLive(_8)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_3",
+            "_6"
+          ],
+          "frame_owned": [
+            "_3",
+            "_6"
+          ]
+        },
+        "statement: StorageLive(_9)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_3",
+            "_6"
+          ],
+          "frame_owned": [
+            "_3",
+            "_6"
+          ]
+        },
+        "statement: StorageLive(_10)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_3",
+            "_6"
+          ],
+          "frame_owned": [
+            "_3",
+            "_6"
+          ]
+        },
+        "statement: StorageLive(_11)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_3",
+            "_6"
+          ],
+          "frame_owned": [
+            "_3",
+            "_6"
+          ]
+        },
+        "statement: StorageLive(_12)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_3",
+            "_6"
+          ],
+          "frame_owned": [
+            "_6"
+          ]
+        },
+        "statement: _12 = &_3"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_3",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_6"
+      ],
+      "frame_owned": [
+        "_6"
+      ]
+    },
+    "terminator: _11 = <std::sync::MutexGuard<'_, i32> as std::ops::Deref>::deref(move _12) -> [return: bb9, unwind: bb14]",
+    {
+      "bb14": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb9": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb9": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_3",
+            "_6",
+            "_11"
+          ],
+          "frame_locally_shared": [
+            "_6"
+          ],
+          "frame_owned": [
+            "_6"
+          ]
+        },
+        "statement: _10 = (*_11)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6",
+            "_10"
+          ],
+          "frame_locally_shared": [
+            "_6",
+            "_10"
+          ],
+          "frame_owned": [
+            "_6",
+            "_10"
+          ]
+        },
+        "statement: StorageDead(_12)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_6"
+          ],
+          "frame_owned": [
+            "_6"
+          ]
+        },
+        "statement: _9 = Eq(move _10, const 123_i32)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6",
+            "_9",
+            "_10"
+          ],
+          "frame_locally_shared": [
+            "_6",
+            "_9",
+            "_10"
+          ],
+          "frame_owned": [
+            "_6",
+            "_9",
+            "_10"
+          ]
+        },
+        "statement: StorageDead(_10)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_6"
+          ],
+          "frame_owned": [
+            "_6"
+          ]
+        },
+        "statement: _8 = Not(move _9)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6",
+            "_8",
+            "_9"
+          ],
+          "frame_locally_shared": [
+            "_6",
+            "_8",
+            "_9"
+          ],
+          "frame_owned": [
+            "_6",
+            "_8",
+            "_9"
+          ]
+        },
+        "statement: StorageDead(_11)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6",
+            "_8",
+            "_9"
+          ],
+          "frame_locally_shared": [
+            "_6",
+            "_8",
+            "_9"
+          ],
+          "frame_owned": [
+            "_6",
+            "_8",
+            "_9"
+          ]
+        },
+        "statement: StorageDead(_9)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_6"
+      ],
+      "frame_owned": [
+        "_6"
+      ]
+    },
+    "terminator: switchInt(move _8) -> [0: bb11, otherwise: bb10]",
+    {
+      "bb10": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb11": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb10": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6",
+            "_8"
+          ],
+          "frame_locally_shared": [
+            "_6",
+            "_8"
+          ],
+          "frame_owned": [
+            "_6",
+            "_8"
+          ]
+        },
+        "statement: StorageLive(_13)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_6",
+        "_8"
+      ],
+      "frame_locally_shared": [
+        "_6",
+        "_8"
+      ],
+      "frame_owned": [
+        "_6",
+        "_8"
+      ]
+    },
+    "terminator: _13 = core::panicking::panic(const /"assertion failed: *guard == 123/") -> bb14",
+    {
+      "bb14": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb11": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6",
+            "_8"
+          ],
+          "frame_locally_shared": [
+            "_6",
+            "_8"
+          ],
+          "frame_owned": [
+            "_6",
+            "_8"
+          ]
+        },
+        "statement: _7 = const ()"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6",
+            "_7",
+            "_8"
+          ],
+          "frame_locally_shared": [
+            "_6",
+            "_7",
+            "_8"
+          ],
+          "frame_owned": [
+            "_6",
+            "_7",
+            "_8"
+          ]
+        },
+        "statement: StorageDead(_8)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6",
+            "_7"
+          ],
+          "frame_locally_shared": [
+            "_6",
+            "_7"
+          ],
+          "frame_owned": [
+            "_6",
+            "_7"
+          ]
+        },
+        "statement: StorageDead(_7)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_6"
+          ],
+          "frame_owned": [
+            "_6"
+          ]
+        },
+        "statement: _0 = const ()"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_0",
+        "_1",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_0",
+        "_6"
+      ],
+      "frame_owned": [
+        "_0",
+        "_6"
+      ]
+    },
+    "terminator: drop(_3) -> [return: bb12, unwind: bb15]",
+    {
+      "bb12": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb15": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb12": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_0",
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_0",
+            "_1",
+            "_6"
+          ],
+          "frame_owned": [
+            "_0",
+            "_1",
+            "_6"
+          ]
+        },
+        "statement: StorageDead(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_0",
+            "_1",
+            "_6"
+          ],
+          "frame_locally_shared": [
+            "_0",
+            "_1",
+            "_6"
+          ],
+          "frame_owned": [
+            "_0",
+            "_1",
+            "_6"
+          ]
+        },
+        "statement: StorageDead(_1)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_0",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_0",
+        "_6"
+      ],
+      "frame_owned": [
+        "_0",
+        "_6"
+      ]
+    },
+    "terminator: goto -> bb13",
+    {
+      "bb13": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb13": [
+    [],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_0",
+        "_6"
+      ],
+      "frame_locally_shared": [
+        "_0",
+        "_6"
+      ],
+      "frame_owned": [
+        "_0",
+        "_6"
+      ]
+    },
+    "terminator: return",
+    {}
+  ],
+  "bb14": [
+    [],
+    "state before terminator:",
+    {
+      "frame_accessible": [],
+      "frame_locally_shared": [],
+      "frame_owned": []
+    },
+    "terminator: drop(_3) -> bb15",
+    {
+      "bb15": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb15": [
+    [],
+    "state before terminator:",
+    {
+      "frame_accessible": [],
+      "frame_locally_shared": [],
+      "frame_owned": []
+    },
+    "terminator: resume",
+    {}
+  ]
+}

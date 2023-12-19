@@ -3,12 +3,6 @@ error: [Prusti: verification error] postcondition might not hold.
   |
 3 | #[ensures(false)]
   |           ^^^^^
-  |
-note: the error originates here
- --> src/lib.rs:4:1
-  |
-4 | pub fn test1() {}
-  | ^^^^^^^^^^^^^^^^^
 
 error: [Prusti: verification error] the asserted expression might not hold
  --> src/lib.rs:7:5

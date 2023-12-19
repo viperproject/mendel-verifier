@@ -83,6 +83,15 @@ impl DomainFunc {
     }
 
     pub fn apply(&self, args: Vec<Expr>) -> Expr {
+        debug_assert!(
+            self.formal_args.len() == args.len(),
+            "Wrong number of arguments provided to function {:?} of domain {:?}: \
+            expected {} but got {}",
+            self.name,
+            self.domain_name,
+            self.formal_args.len(),
+            args.len(),
+        );
         Expr::domain_func_app(self.clone(), args)
     }
 
@@ -105,6 +114,16 @@ impl DomainFunc {
         arg3: impl Into<Expr>,
     ) -> Expr {
         self.apply(vec![arg1.into(), arg2.into(), arg3.into()])
+    }
+
+    pub fn apply4(
+        &self,
+        arg1: impl Into<Expr>,
+        arg2: impl Into<Expr>,
+        arg3: impl Into<Expr>,
+        arg4: impl Into<Expr>,
+    ) -> Expr {
+        self.apply(vec![arg1.into(), arg2.into(), arg3.into(), arg4.into()])
     }
 }
 
@@ -148,6 +167,22 @@ pub struct DomainAxiom {
     pub name: String,
     pub expr: Expr,
     pub domain_name: String,
+}
+
+impl DomainAxiom {
+    pub fn new(
+        domain_name: impl ToString,
+        comment: impl ToString,
+        name: impl ToString,
+        expr: Expr,
+    ) -> Self {
+        Self {
+            comment: Some(comment.to_string()),
+            name: name.to_string(),
+            expr,
+            domain_name: domain_name.to_string(),
+        }
+    }
 }
 
 impl fmt::Display for DomainAxiom {

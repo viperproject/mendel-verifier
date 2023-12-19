@@ -30,6 +30,9 @@ fn run_tests(mode: &str, path: &str, custom_args: Vec<String>) {
         config.compile_lib_path = PathBuf::from(lib_path);
     }
 
+    // Update the .stdout so that all tests pass:
+    // config.bless = true;
+
     compiletest::run_tests(&config);
 }
 
@@ -63,7 +66,17 @@ fn test_runner(_tests: &[&()]) {
     );
     run_tests(
         "ui",
+        "tests/test_cases/definitely_blocked",
+        vec!["--analysis=DefinitelyUnreachableAnalysis".into()],
+    );
+    run_tests(
+        "ui",
         "tests/test_cases/framing",
         vec!["--analysis=FramingAnalysis".into()],
+    );
+    run_tests(
+        "ui",
+        "tests/test_cases/locally_shared",
+        vec!["--analysis=LocallySharedAnalysis".into()],
     );
 }

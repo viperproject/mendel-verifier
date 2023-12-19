@@ -1,8 +1,8 @@
-/// The preparser processes Prusti syntax into Rust syntax.
-use proc_macro2::{Delimiter, Span, TokenStream, TokenTree};
-use proc_macro2::{Punct, Spacing::*};
+//! The preparser processes Prusti syntax into Rust syntax.
+use super::common::OwnershipKind;
+use proc_macro2::{Delimiter, Punct, Spacing::*, Span, TokenStream, TokenTree};
 use quote::{quote, quote_spanned, ToTokens};
-use std::collections::VecDeque;
+use std::{collections::VecDeque, fmt::Display};
 use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
@@ -15,6 +15,7 @@ pub struct Arg {
     pub typ: syn::Type,
 }
 
+/// Translated Prusti-specific syntax into Rust syntax.
 pub fn parse_prusti(tokens: TokenStream) -> syn::Result<TokenStream> {
     let parsed = PrustiTokenStream::new(tokens).parse()?;
     // to make sure we catch errors in the Rust syntax early (and with the
@@ -22,6 +23,8 @@ pub fn parse_prusti(tokens: TokenStream) -> syn::Result<TokenStream> {
     syn::parse2::<syn::Expr>(parsed.clone())?;
     Ok(parsed)
 }
+
+/// Parses a pledge, in the form `a => b` or just `b`, and returns `b`.
 pub fn parse_prusti_pledge(tokens: TokenStream) -> syn::Result<TokenStream> {
     // TODO: pledges with reference that is not "result" are not supported;
     // for this reason we assert here that the reference (if there is any) is "result"
@@ -39,6 +42,7 @@ pub fn parse_prusti_pledge(tokens: TokenStream) -> syn::Result<TokenStream> {
     Ok(rhs)
 }
 
+/// Parses an assert pledge, in the form `a => b, c` or `b, c`, and returns `b, c`.
 pub fn parse_prusti_assert_pledge(tokens: TokenStream) -> syn::Result<(TokenStream, TokenStream)> {
     // TODO: pledges with reference that is not "result" are not supported;
     // for this reason we assert here that the reference (if there is any) is "result"
@@ -57,8 +61,14 @@ pub fn parse_prusti_assert_pledge(tokens: TokenStream) -> syn::Result<(TokenStre
     Ok((lhs, rhs))
 }
 
+/// Parses a `TypeCondSpecRefinement` item.
 pub fn parse_type_cond_spec(tokens: TokenStream) -> syn::Result<TypeCondSpecRefinement> {
     syn::parse2(tokens)
+}
+
+/// Parses an ownership annotation.
+pub fn parse_owns(tokens: TokenStream) -> syn::Result<ParsedOwns> {
+    PrustiTokenStream::new(tokens).parse_owns()
 }
 
 /*
@@ -79,12 +89,12 @@ Preparsing consists of two stages:
 
 /// The preparser reuses [syn::Result] to integrate with the rest of the specs
 /// library, even though syn is not used here.
-fn error(span: Span, msg: &str) -> syn::Error {
+fn error(span: Span, msg: impl Display) -> syn::Error {
     syn::Error::new(span, msg)
 }
 
 /// Same as `error`, conveniently packaged as `syn::Result::Err`.
-fn err<T>(span: Span, msg: &str) -> syn::Result<T> {
+fn err<T>(span: Span, msg: impl Display) -> syn::Result<T> {
     Err(error(span, msg))
 }
 
@@ -109,11 +119,23 @@ impl PrustiTokenStream {
         while pos < source.len() {
             // no matter what tokens we see, we will consume at least one
             pos += 1;
-            tokens.push_back(match (&source[pos - 1], source.get(pos), source.get(pos + 1)) {
+            tokens.push_back(match (&source[pos - 1], source.get(pos), source.get(pos + 1), source.get(pos + 2)) {
                 (
                     TokenTree::Punct(p1),
                     Some(TokenTree::Punct(p2)),
                     Some(TokenTree::Punct(p3)),
+                    Some(TokenTree::Punct(p4)),
+                ) if let Some(op) = PrustiToken::parse_op4(p1, p2, p3, p4) => {
+                    // this was a four-character operator, consume three
+                    // additional tokens
+                    pos += 3;
+                    op
+                }
+                (
+                    TokenTree::Punct(p1),
+                    Some(TokenTree::Punct(p2)),
+                    Some(TokenTree::Punct(p3)),
+                    _,
                 ) if let Some(op) = PrustiToken::parse_op3(p1, p2, p3) => {
                     // this was a three-character operator, consume two
                     // additional tokens
@@ -124,28 +146,29 @@ impl PrustiTokenStream {
                     TokenTree::Punct(p1),
                     Some(TokenTree::Punct(p2)),
                     _,
+                    _,
                 ) if let Some(op) = PrustiToken::parse_op2(p1, p2) => {
                     // this was a two-character operator, consume one
                     // additional token
                     pos += 1;
                     op
                 }
-                (TokenTree::Ident(ident), _, _) if ident == "outer" =>
+                (TokenTree::Ident(ident), _, _, _) if ident == "outer" =>
                     PrustiToken::Outer(ident.span()),
-                (TokenTree::Ident(ident), _, _) if ident == "forall" =>
+                (TokenTree::Ident(ident), _, _, _) if ident == "forall" =>
                     PrustiToken::Quantifier(ident.span(), Quantifier::Forall),
-                (TokenTree::Ident(ident), _, _) if ident == "exists" =>
+                (TokenTree::Ident(ident), _, _, _) if ident == "exists" =>
                     PrustiToken::Quantifier(ident.span(), Quantifier::Exists),
-                (TokenTree::Punct(punct), _, _)
+                (TokenTree::Punct(punct), _, _, _)
                     if punct.as_char() == ',' && punct.spacing() == Alone =>
                     PrustiToken::BinOp(punct.span(), PrustiBinaryOp::Rust(RustOp::Comma)),
-                (TokenTree::Punct(punct), _, _)
+                (TokenTree::Punct(punct), _, _, _)
                     if punct.as_char() == ';' && punct.spacing() == Alone =>
                     PrustiToken::BinOp(punct.span(), PrustiBinaryOp::Rust(RustOp::Semicolon)),
-                (TokenTree::Punct(punct), _, _)
+                (TokenTree::Punct(punct), _, _, _)
                     if punct.as_char() == '=' && punct.spacing() == Alone =>
                     PrustiToken::BinOp(punct.span(), PrustiBinaryOp::Rust(RustOp::Assign)),
-                (token @ TokenTree::Punct(punct), _, _) if punct.spacing() == Joint => {
+                (token @ TokenTree::Punct(punct), _, _, _) if punct.spacing() == Joint => {
                     // make sure to fully consume any Rust operator
                     // to avoid later mis-identifying its suffix
                     tokens.push_back(PrustiToken::Token(token.clone()));
@@ -158,12 +181,12 @@ impl PrustiTokenStream {
                     }
                     continue;
                 }
-                (TokenTree::Group(group), _, _) => PrustiToken::Group(
+                (TokenTree::Group(group), _, _, _) => PrustiToken::Group(
                     group.span(),
                     group.delimiter(),
                     box Self::new(group.stream()),
                 ),
-                (token, _, _) => PrustiToken::Token(token.clone()),
+                (token, _, _, _) => PrustiToken::Token(token.clone()),
             });
         }
         Self {
@@ -420,7 +443,7 @@ impl PrustiTokenStream {
             Some(PrustiToken::Group(_span, Delimiter::Parenthesis, box group)) => {
                 Ok(group) // TODO: need to clone()?
             }
-            _ => Err(error(self.source_span, "expected parenthesized group")),
+            _ => Err(error(self.span(), "expected parenthesized group")),
         }
     }
 
@@ -436,7 +459,7 @@ impl PrustiTokenStream {
                 "pure" => Ok(NestedSpec::Pure),
                 other => err(
                     self.source_span,
-                    format!("unexpected nested spec type: {other}").as_ref(),
+                    format!("unexpected nested spec type: {other}"),
                 ),
             }
         } else {
@@ -515,6 +538,101 @@ impl PrustiTokenStream {
             }
             _ => Ok(vec![]),
         }
+    }
+
+    /// Computes the span of the remaining tokens.
+    fn span(&self) -> Span {
+        self.tokens
+            .iter()
+            .map(|t| t.span())
+            .reduce(|a, b| a.join(b).unwrap_or(self.source_span))
+            .unwrap_or(self.source_span)
+    }
+
+    /// Processes a Prusti token stream for an owns annotation.
+    fn parse_owns(self) -> syn::Result<ParsedOwns> {
+        let source_span = self.source_span;
+        let mut owns_ops = self.split(PrustiBinaryOp::Rust(RustOp::Arrow), false);
+        let (mut lhs, mut rhs) = match (owns_ops.pop(), owns_ops.pop()) {
+            (Some(arg), None) => {
+                return err(arg.span(), "no arrows found in the `owns(..)` annotation");
+            }
+            (Some(rhs), Some(lhs)) => (lhs, rhs),
+            _ => {
+                return err(
+                    Span::call_site(),
+                    "too many arrows in the `owns(..)` annotation",
+                )
+            }
+        };
+        match lhs.tokens.pop_front() {
+            None => return err(source_span, "expected one more token before the arrow"),
+            Some(PrustiToken::Token(TokenTree::Punct(ch))) if ch.as_char() == '&' => {} // Ok
+            Some(wrong_token) => return err(wrong_token.span(), "unexpected token; expected &"),
+        }
+        let self_kind = match lhs.tokens.pop_front() {
+            None => return err(source_span, "expected one more token before the arrow"),
+            Some(PrustiToken::Token(TokenTree::Ident(name))) => match name.to_string().as_str() {
+                "self" => OwnershipKind::ReadRef,
+                "mut" => match lhs.tokens.pop_front() {
+                    None => return err(source_span, "expected one more token before the arrow"),
+                    Some(PrustiToken::Token(TokenTree::Ident(name))) if name == "self" => {
+                        OwnershipKind::WriteRef
+                    }
+                    Some(wrong_token) => {
+                        return err(wrong_token.span(), "unexpected token; expected self")
+                    }
+                },
+                "loc" => match lhs.tokens.pop_front() {
+                    None => return err(source_span, "expected one more token before the arrow"),
+                    Some(PrustiToken::Token(TokenTree::Ident(name))) if name == "self" => {
+                        OwnershipKind::LocalRef
+                    }
+                    Some(wrong_token) => {
+                        return err(wrong_token.span(), "unexpected token; expected self")
+                    }
+                },
+                _ => return err(name.span(), "unexpected token; expected mut, loc or self"),
+            },
+            Some(wrong_token) => {
+                return err(
+                    wrong_token.span(),
+                    "unexpected token; expected mut, loc or self",
+                )
+            }
+        };
+        let condition = match lhs.tokens.pop_front() {
+            None => TokenStream::new(),
+            Some(PrustiToken::Token(TokenTree::Ident(name))) if name == "if" => lhs.expr_bp(0)?,
+            Some(wrong_token) => {
+                return err(wrong_token.span(), "unexpected token; expected if or arrow")
+            }
+        };
+        let target_kind = match rhs.tokens.pop_front() {
+            None => return err(source_span, "expected one more token after the arrow"),
+            Some(PrustiToken::Token(TokenTree::Ident(name))) => {
+                match OwnershipKind::try_from(name.to_string().as_str()) {
+                    Ok(kind) => kind,
+                    Err(_) => {
+                        return err(name.span(), "unexpected token; expected an ownership kind")
+                    }
+                }
+            }
+            Some(wrong_token) => {
+                return err(
+                    wrong_token.span(),
+                    "unexpected token; expected an ownership kind",
+                )
+            }
+        };
+        let target = rhs.pop_parenthesized_group()?.expr_bp(0)?;
+        Ok(ParsedOwns {
+            source_span,
+            self_ownership: self_kind,
+            condition,
+            target_ownership: target_kind,
+            target,
+        })
     }
 }
 
@@ -769,6 +887,15 @@ fn operator3(op: &str, p1: &Punct, p2: &Punct, p3: &Punct) -> bool {
         && p3.spacing() == Alone
 }
 
+fn operator4(op: &str, p1: &Punct, p2: &Punct, p3: &Punct, p4: &Punct) -> bool {
+    let chars = op.chars().collect::<Vec<_>>();
+    [p1.as_char(), p2.as_char(), p3.as_char(), p4.as_char()] == chars[0..4]
+        && p1.spacing() == Joint
+        && p2.spacing() == Joint
+        && p3.spacing() == Joint
+        && p4.spacing() == Alone
+}
+
 impl PrustiToken {
     fn span(&self) -> Span {
         match self {
@@ -850,6 +977,21 @@ impl PrustiToken {
             },
         ))
     }
+
+    fn parse_op4(p1: &Punct, p2: &Punct, p3: &Punct, p4: &Punct) -> Option<Self> {
+        let span = join_spans(
+            join_spans(join_spans(p1.span(), p2.span()), p3.span()),
+            p4.span(),
+        );
+        Some(Self::BinOp(
+            span,
+            if operator4("====", p1, p2, p3, p4) {
+                PrustiBinaryOp::MemSnapEq
+            } else {
+                return None;
+            },
+        ))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -859,6 +1001,7 @@ enum PrustiBinaryOp {
     Or,
     And,
     SnapEq,
+    MemSnapEq,
 }
 
 impl PrustiBinaryOp {
@@ -870,6 +1013,7 @@ impl PrustiBinaryOp {
             Self::Or => (5, 6),
             Self::And => (7, 8),
             Self::SnapEq => (9, 10),
+            Self::MemSnapEq => (11, 12),
         }
     }
 
@@ -891,6 +1035,10 @@ impl PrustiBinaryOp {
             Self::SnapEq => {
                 let joined_span = join_spans(lhs.span(), rhs.span());
                 quote_spanned! { joined_span => snapshot_equality(&#lhs, &#rhs) }
+            }
+            Self::MemSnapEq => {
+                let joined_span = join_spans(lhs.span(), rhs.span());
+                quote_spanned! { joined_span => memory_snapshot_equality(&#lhs, &#rhs) }
             }
         }
     }
@@ -1124,4 +1272,14 @@ mod tests {
             }
         }
     }
+}
+
+/// The parsed attributes of a `#[capable(...)]` annotation.
+#[derive(Clone, Debug)]
+pub struct ParsedOwns {
+    pub source_span: Span,
+    pub self_ownership: OwnershipKind,
+    pub condition: TokenStream,
+    pub target_ownership: OwnershipKind,
+    pub target: TokenStream,
 }

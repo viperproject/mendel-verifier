@@ -1,0 +1,217 @@
+name: Test
+
+on:
+  push:
+    branches: [master, staging, trying]
+    paths-ignore: 'docs/**'
+  pull_request:
+    branches: [master]
+    paths-ignore: 'docs/**'
+
+# Cancel previous runs in a PR when pushing new commits
+concurrency:
+  group: worflow-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Do not cancel when testing the master branch
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+env:
+  RUST_BACKTRACE: 1
+  PRUSTI_ASSERT_TIMEOUT: 60000
+
+jobs:
+  # Check formatting
+  fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Check formatting
+        run: |
+          rustup component add rustfmt
+          python ./x.py fmt-check-all
+
+  # Run clippy checks
+  clippy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '15'
+      - name: Set up the environment
+        run: python x.py setup
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shared"
+      - name: Check and report Clippy errors
+        run: |
+          python ./x.py clippy -- -D warnings
+
+  # Detect missing dependencies in workspace packages
+  # See: https://stackoverflow.com/a/74293494/2491528
+  check-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '15'
+      - name: Set up the environment
+        run: python x.py setup
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shared"
+      - name: Compile each workspace package individually
+        run: |
+          cargo install cargo-hack
+          python ./x.py hack build --workspace
+
+  # Check that we depend on the compiler only through SMIR.
+  smir-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Check and report illegal extern crate.
+        run: |
+          python ./x.py check-smir
+
+  # Run a subset of the tests that used to fail often.
+  # The goal here is to fail fast and give quick feedback to the developers.
+  # This job intentionally doesn't use the verification cache.
+  quick-tests:
+    runs-on: ubuntu-latest
+    env:
+      PRUSTI_CACHE_PATH: ${{ github.workspace }}/prusti_cache.bin
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '15'
+      - name: Set up the environment
+        run: python x.py setup
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shared"
+      - name: Build with cargo
+        run: python x.py build --all
+      - name: Run quick tests
+        run: python x.py test --all quick
+
+  # Run all the tests.
+  all-tests:
+    needs: [fmt-check, clippy-check, check-deps, smir-check, quick-tests]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    env:
+      PRUSTI_CACHE_PATH: ${{ github.workspace }}/prusti_cache.bin
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Set up Python 3
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '15'
+      - name: Set up the environment
+        run: python x.py setup
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shared"
+      - name: Prepare verification cache keys
+        shell: bash
+        run: |
+          VER_CACHE_KEY_SHARED=prusti-cache-$(cat viper-toolchain)-$(date +%Y-%m)
+          echo "VER_CACHE_KEY_SHARED=$VER_CACHE_KEY_SHARED" >> $GITHUB_ENV
+          echo "VER_CACHE_KEY_UNIQUE=$VER_CACHE_KEY_SHARED-${RANDOM}${RANDOM}" >> $GITHUB_ENV
+      - name: Load verification cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.PRUSTI_CACHE_PATH }}
+          # Use a unique key, so that the job will always store the cache at the end of the run
+          key: ${{ env.VER_CACHE_KEY_UNIQUE }}
+          # Restore from the most recent cache that matches a shared prefix of the key
+          restore-keys: ${{ env.VER_CACHE_KEY_SHARED }}
+      - name: Build with cargo
+        run: python x.py build --all
+      - name: Run cargo tests
+        run: python x.py test --all
+      - name: Check prusti-contracts
+        run: |
+          cd prusti-contracts/prusti-contracts-test/
+          cargo +stable build
+
+  # Run Prusti on itself.
+  # Disabled because of a bug when compiling jni-gen
+  test-on-prusti:
+    needs: [fmt-check, clippy-check, check-deps, smir-check, quick-tests]
+    runs-on: ubuntu-latest
+    if: false
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '15'
+      - name: Set up the environment
+        run: python x.py setup
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shared"
+      - name: Build with cargo
+        run: python x.py build --release --all
+      - name: Run cargo-prusti on Prusti
+        run: python x.py exec target/release/cargo-prusti
+        env:
+          PRUSTI_SKIP_UNSUPPORTED_FEATURES: true
+          PRUSTI_FULL_COMPILATION: true
+          PRUSTI_CHECK_PANICS: false
+          PRUSTI_CHECK_OVERFLOWS: false
+          PRUSTI_INTERNAL_ERRORS_AS_WARNINGS: true
+
+  # Test cargo-prusti on a collection of crates.
+  test-crates:
+    needs: [fmt-check, clippy-check, check-deps, smir-check, quick-tests]
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        shard_index: [0, 1, 2, 3]
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Setup Python 3
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '15'
+      - name: Set up the environment
+        run: python x.py setup
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shared"
+      - name: Build with cargo --release
+        run: python x.py build --release --all
+      - name: Test Prusti on a collection of crates
+        run: ./target/release/test-crates --fail-fast --num-shards=4 --shard-index=${{ matrix.shard_index }}

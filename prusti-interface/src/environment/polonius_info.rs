@@ -775,6 +775,21 @@ impl<'a, 'tcx: 'a> PoloniusInfo<'a, 'tcx> {
         Ok(info)
     }
 
+    /// Returns the input facts of the borrow checker.
+    pub fn input_facts(&self) -> &facts::AllInputFacts {
+        &self.borrowck_in_facts
+    }
+
+    /// Returns the output facts of the borrow checker.
+    pub fn output_facts(&self) -> &facts::AllOutputFacts {
+        &self.borrowck_out_facts
+    }
+
+    /// Returns the interner of the borrow checker.
+    pub fn interner(&self) -> &facts::Interner {
+        &self.interner
+    }
+
     fn disconnect_universal_regions(
         tcx: ty::TyCtxt<'tcx>,
         mir: &mir::Body<'tcx>,

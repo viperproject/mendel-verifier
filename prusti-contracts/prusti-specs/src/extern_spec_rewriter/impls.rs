@@ -1,6 +1,7 @@
 use super::common::*;
 use crate::{
-    is_predicate_macro, specifications::common::generate_struct_name, ExternSpecKind, SPECS_VERSION,
+    common::strip_generics_bounds, is_predicate_macro,
+    specifications::common::generate_struct_name, ExternSpecKind, SPECS_VERSION,
 };
 use proc_macro2::TokenStream;
 use quote::quote_spanned;
@@ -26,7 +27,7 @@ struct RewrittenExternalSpecs {
 fn rewrite_extern_spec_internal(item_impl: &syn::ItemImpl) -> syn::Result<RewrittenExternalSpecs> {
     let new_struct = generate_new_struct(item_impl)?;
     let struct_ident = &new_struct.ident;
-    let generic_args = rewrite_generics(&new_struct.generics);
+    let generic_args = strip_generics_bounds(&new_struct.generics);
 
     let struct_ty: syn::Type = parse_quote_spanned! {item_impl.span()=>
         #struct_ident #generic_args

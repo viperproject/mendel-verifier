@@ -1,0 +1,453 @@
+Analyzing file $DIR/move_refs.rs using MaybeBorrowedAnalysis...
+Result for function move_unit_shared_ref():
+{
+  "bb0": [
+    [
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageLive(_1)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: _1 = ()"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: FakeRead(ForLet(None), _1)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageLive(_2)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: _2 = &_1"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: FakeRead(ForLet(None), _2)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: StorageLive(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: StorageLive(_4)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: _4 = _2"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: StorageLive(_5)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: _5 = _2"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: _3 = (move _4, move _5)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: StorageDead(_5)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: StorageDead(_4)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [
+            "_1"
+          ],
+          "blocked": []
+        },
+        "statement: FakeRead(ForLet(None), _3)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: _0 = const ()"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageDead(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageDead(_2)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageDead(_1)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frozen": [],
+      "blocked": []
+    },
+    "terminator: return",
+    {}
+  ]
+}
+Result for function move_unit_mutable_ref():
+{
+  "bb0": [
+    [
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageLive(_1)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: _1 = ()"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: FakeRead(ForLet(None), _1)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageLive(_2)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: _2 = ()"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: FakeRead(ForLet(None), _2)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageLive(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: _3 = &mut _1"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1"
+          ]
+        },
+        "statement: FakeRead(ForLet(None), _3)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1"
+          ]
+        },
+        "statement: StorageLive(_4)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1"
+          ]
+        },
+        "statement: _4 = &mut _2"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: FakeRead(ForLet(None), _4)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: StorageLive(_5)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: StorageLive(_6)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: _6 = move _3"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: StorageLive(_7)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: _7 = move _4"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: _5 = (move _6, move _7)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: StorageDead(_7)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: StorageDead(_6)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: FakeRead(ForLet(None), _5)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: _0 = const ()"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageDead(_5)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageDead(_4)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageDead(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageDead(_2)"
+      ],
+      [
+        "state:",
+        {
+          "frozen": [],
+          "blocked": []
+        },
+        "statement: StorageDead(_1)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frozen": [],
+      "blocked": []
+    },
+    "terminator: return",
+    {}
+  ]
+}

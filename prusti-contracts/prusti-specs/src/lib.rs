@@ -11,6 +11,7 @@
 #[macro_use]
 mod common;
 mod extern_spec_rewriter;
+mod owns_rewriter;
 mod type_cond_specs;
 mod parse_closure_macro;
 mod parse_quote_spanned;
@@ -84,6 +85,9 @@ fn extract_prusti_attributes(
                     }
                     // Nothing to do for attributes without arguments.
                     SpecAttributeKind::Pure
+                    | SpecAttributeKind::PureUnstable
+                    | SpecAttributeKind::PureMemory
+                    | SpecAttributeKind::GhostFn
                     | SpecAttributeKind::Terminates
                     | SpecAttributeKind::Trusted
                     | SpecAttributeKind::Predicate => {
@@ -125,14 +129,46 @@ pub fn rewrite_prusti_attributes(
     // Collect the remaining Prusti attributes, removing them from `item`.
     prusti_attributes.extend(extract_prusti_attributes(&mut item));
 
-    // make sure to also update the check in the predicate! handling method
-    if prusti_attributes
+    let has_predicate = prusti_attributes
         .iter()
-        .any(|(ak, _)| ak == &SpecAttributeKind::Predicate)
-    {
+        .any(|(ak, _)| ak == &SpecAttributeKind::Predicate);
+    let has_pure = prusti_attributes
+        .iter()
+        .any(|(ak, _)| ak == &SpecAttributeKind::Pure);
+    let has_pure_unstable = prusti_attributes
+        .iter()
+        .any(|(ak, _)| ak == &SpecAttributeKind::PureUnstable);
+    let has_pure_memory = prusti_attributes
+        .iter()
+        .any(|(ak, _)| ak == &SpecAttributeKind::PureMemory);
+
+    // make sure to also update the check in the predicate! handling method
+    if has_predicate {
         return syn::Error::new(
             item.span(),
             "`predicate!` is incompatible with other Prusti attributes",
+        )
+        .to_compile_error();
+    }
+
+    if has_pure && has_pure_unstable {
+        return syn::Error::new(
+            item.span(),
+            "invalid Prusti attribute combination; pure unstable already implies pure",
+        )
+        .to_compile_error();
+    }
+    if has_pure && has_pure_memory {
+        return syn::Error::new(
+            item.span(),
+            "invalid Prusti attribute combination; pure memory already implies pure",
+        )
+        .to_compile_error();
+    }
+    if has_pure_memory && has_pure_unstable {
+        return syn::Error::new(
+            item.span(),
+            "invalid Prusti attribute combination; pure unstable already implies pure memory",
         )
         .to_compile_error();
     }
@@ -165,6 +201,9 @@ fn generate_spec_and_assertions(
             SpecAttributeKind::AfterExpiry => generate_for_after_expiry(attr_tokens, item),
             SpecAttributeKind::AssertOnExpiry => generate_for_assert_on_expiry(attr_tokens, item),
             SpecAttributeKind::Pure => generate_for_pure(attr_tokens, item),
+            SpecAttributeKind::PureUnstable => generate_for_pure_unstable(attr_tokens, item),
+            SpecAttributeKind::PureMemory => generate_for_pure_memory(attr_tokens, item),
+            SpecAttributeKind::GhostFn => generate_for_ghost_fn(attr_tokens, item),
             SpecAttributeKind::Terminates => generate_for_terminates(attr_tokens, item),
             SpecAttributeKind::Trusted => generate_for_trusted(attr_tokens, item),
             // Predicates are handled separately below; the entry in the SpecAttributeKind enum
@@ -292,6 +331,62 @@ fn generate_for_pure(attr: TokenStream, item: &untyped::AnyFnItem) -> GeneratedR
         vec![parse_quote_spanned! {item.span()=>
             #[prusti::pure]
         }],
+    ))
+}
+
+/// Generate spec items and attributes to typecheck and later retrieve "pure_unstable" annotations.
+fn generate_for_pure_unstable(attr: TokenStream, item: &untyped::AnyFnItem) -> GeneratedResult {
+    if !attr.is_empty() {
+        return Err(syn::Error::new(
+            attr.span(),
+            "the `#[pure_unstable]` attribute does not take parameters",
+        ));
+    }
+
+    Ok((
+        vec![],
+        vec![parse_quote_spanned! {item.span()=>
+            #[prusti::pure_unstable]
+        }],
+    ))
+}
+
+/// Generate spec items and attributes to typecheck and later retrieve "pure_memory" annotations.
+fn generate_for_pure_memory(attr: TokenStream, item: &untyped::AnyFnItem) -> GeneratedResult {
+    if !attr.is_empty() {
+        return Err(syn::Error::new(
+            attr.span(),
+            "the `#[pure_memory]` attribute does not take parameters",
+        ));
+    }
+
+    Ok((
+        vec![],
+        vec![parse_quote_spanned! {item.span()=>
+            #[prusti::pure_memory]
+        }],
+    ))
+}
+
+/// Generate spec items and attributes to typecheck and later retrieve "ghost" annotations.
+fn generate_for_ghost_fn(attr: TokenStream, item: &untyped::AnyFnItem) -> GeneratedResult {
+    if !attr.is_empty() {
+        return Err(syn::Error::new(
+            attr.span(),
+            "the `#[ghost_fn]` attribute does not take parameters",
+        ));
+    }
+
+    Ok((
+        vec![],
+        vec![
+            parse_quote_spanned! {item.span()=>
+                #[prusti::ghost_fn]
+            },
+            parse_quote_spanned! {item.span()=>
+                #[prusti::spec_only]
+            },
+        ],
     ))
 }
 
@@ -683,6 +778,28 @@ pub fn trusted(attr: TokenStream, tokens: TokenStream) -> TokenStream {
     }
 }
 
+pub fn capable(attr: TokenStream, tokens: TokenStream) -> TokenStream {
+    if attr.is_empty() {
+        return syn::Error::new(
+            attr.span(),
+            "the `#[capable(..)]` attribute requires a parameter",
+        )
+        .to_compile_error();
+    }
+
+    result_to_tokens!({
+        let item: syn::Item = syn::parse2(tokens)?;
+        match item {
+            syn::Item::Impl(item_impl) => owns_rewriter::rewrite_impl(&item_impl, &attr),
+            //syn::Item::Trait(item_trait) => owns_rewriter::rewrite_trait(&item_trait, &attr),
+            _ => Err(syn::Error::new(
+                Span::call_site(), // this covers the entire macro invocation
+                "#[capable(..)] cannot be attached to this item",
+            )),
+        }
+    })
+}
+
 pub fn invariant(attr: TokenStream, tokens: TokenStream) -> TokenStream {
     let mut rewriter = rewriter::AstRewriter::new();
     let spec_id = rewriter.generate_spec_id();
@@ -830,6 +947,9 @@ fn extract_prusti_attributes_for_types(
                     SpecAttributeKind::AssertOnExpiry => unreachable!("assert_on_expiry on type"),
                     SpecAttributeKind::RefineSpec => unreachable!("refine_spec on type"),
                     SpecAttributeKind::Pure => unreachable!("pure on type"),
+                    SpecAttributeKind::PureUnstable => unreachable!("pure unstable on type"),
+                    SpecAttributeKind::PureMemory => unreachable!("pure memory on type"),
+                    SpecAttributeKind::GhostFn => unreachable!("ghost_fn on type"),
                     SpecAttributeKind::Invariant => unreachable!("invariant on type"),
                     SpecAttributeKind::Predicate => unreachable!("predicate on type"),
                     SpecAttributeKind::Terminates => unreachable!("terminates on type"),
@@ -873,6 +993,9 @@ fn generate_spec_and_assertions_for_types(
             SpecAttributeKind::AfterExpiry => unreachable!(),
             SpecAttributeKind::AssertOnExpiry => unreachable!(),
             SpecAttributeKind::Pure => unreachable!(),
+            SpecAttributeKind::PureUnstable => unreachable!(),
+            SpecAttributeKind::PureMemory => unreachable!(),
+            SpecAttributeKind::GhostFn => unreachable!(),
             SpecAttributeKind::Predicate => unreachable!(),
             SpecAttributeKind::Invariant => unreachable!(),
             SpecAttributeKind::RefineSpec => unreachable!(),

@@ -138,3 +138,55 @@ fn generate_name_for_type(ty: &syn::Type) -> Option<String> {
         _ => None,
     }
 }
+
+/// Ownership kind, used to specify library ownership.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OwnershipKind {
+    WriteRef,
+    LocalRef,
+    ReadRef,
+    Unique,
+    Local,
+    Immutable,
+    Read,
+    Write,
+    NoReadRef,
+    NoWriteRef,
+}
+
+impl TryFrom<&str> for OwnershipKind {
+    type Error = ();
+
+    fn try_from(typ: &str) -> Result<OwnershipKind, ()> {
+        match typ {
+            "readRef" => Ok(OwnershipKind::ReadRef),
+            "localRef" => Ok(OwnershipKind::LocalRef),
+            "writeRef" => Ok(OwnershipKind::WriteRef),
+            "unique" => Ok(OwnershipKind::Unique),
+            "local" => Ok(OwnershipKind::Local),
+            "immutable" => Ok(OwnershipKind::Immutable),
+            "read" => Ok(OwnershipKind::Read),
+            "write" => Ok(OwnershipKind::Write),
+            "noReadRef" => Ok(OwnershipKind::NoReadRef),
+            "noWriteRef" => Ok(OwnershipKind::NoWriteRef),
+            _ => Err(()),
+        }
+    }
+}
+
+impl Display for OwnershipKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OwnershipKind::ReadRef => write!(f, "readRef"),
+            OwnershipKind::LocalRef => write!(f, "localRef"),
+            OwnershipKind::WriteRef => write!(f, "writeRef"),
+            OwnershipKind::Unique => write!(f, "unique"),
+            OwnershipKind::Local => write!(f, "local"),
+            OwnershipKind::Immutable => write!(f, "immutable"),
+            OwnershipKind::Read => write!(f, "read"),
+            OwnershipKind::Write => write!(f, "write"),
+            OwnershipKind::NoReadRef => write!(f, "noReadRef"),
+            OwnershipKind::NoWriteRef => write!(f, "noWriteRef"),
+        }
+    }
+}

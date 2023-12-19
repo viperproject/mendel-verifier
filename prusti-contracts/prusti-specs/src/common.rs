@@ -1,6 +1,7 @@
 //! Common code for spec-rewriting
 
 use proc_macro2::Ident;
+use quote::ToTokens;
 pub(crate) use receiver_rewriter::*;
 pub(crate) use self_type_rewriter::*;
 use std::{borrow::BorrowMut, collections::HashMap};
@@ -511,6 +512,28 @@ pub(crate) fn add_phantom_data_for_generic_params(item_struct: &mut syn::ItemStr
             syn::Fields::Unit => unreachable!(),
         };
     }
+}
+
+/// We take the Generics (parameters) defined e.g. with the `#[extern_spec] impl<...>` (the `<...>`)
+/// but then need to pass those as arguments: `SomeStruct<...>`. This function translates from the
+/// syntax of one to the other; e.g. `<T: Bound, 'l: Bound, const C: usize>` -> `<T, 'l, C>`
+pub fn strip_generics_bounds(gens: &syn::Generics) -> syn::AngleBracketedGenericArguments {
+    let args: Vec<syn::GenericArgument> = gens
+        .params
+        .clone()
+        .into_iter()
+        .map(|gp| {
+            let ts = match gp {
+                syn::GenericParam::Type(syn::TypeParam { ident, .. })
+                | syn::GenericParam::Const(syn::ConstParam { ident, .. }) => {
+                    ident.into_token_stream()
+                }
+                syn::GenericParam::Lifetime(ld) => ld.lifetime.into_token_stream(),
+            };
+            syn::parse2::<syn::GenericArgument>(ts).unwrap()
+        })
+        .collect();
+    syn::parse_quote! { < #(#args),* > }
 }
 
 #[cfg(test)]

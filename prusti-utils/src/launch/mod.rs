@@ -232,6 +232,32 @@ pub fn find_z3_exe(base_dir: &Path) -> Option<PathBuf> {
     candidates.into_iter().find(|candidate| candidate.is_file())
 }
 
+/// Find Boogie executable
+pub fn find_boogie_exe(base_dir: &Path) -> Option<PathBuf> {
+    let mut candidates = vec![
+        base_dir
+            .join("viper_tools")
+            .join("boogie")
+            .join("Binaries")
+            .join("Boogie"),
+        base_dir
+            .join("..")
+            .join("..")
+            .join("viper_tools")
+            .join("boogie")
+            .join("Binaries")
+            .join("Boogie"),
+    ];
+
+    if cfg!(windows) {
+        candidates.iter_mut().for_each(|x| {
+            x.set_extension("exe");
+        });
+    }
+
+    candidates.into_iter().find(|candidate| candidate.is_file())
+}
+
 #[cfg(target_family = "unix")]
 pub fn sigint_handler() {
     // Killing the process group terminates the process tree
@@ -260,7 +286,7 @@ pub fn set_environment_settings(
 ) {
     set_smt_solver_path_setting(cmd, current_executable_dir);
     set_smt_solver_wrapper_path_setting(cmd, current_executable_dir);
-    set_boogie_path_setting(cmd);
+    set_boogie_path_setting(cmd, current_executable_dir);
     set_viper_home_setting(cmd, current_executable_dir);
     set_java_home_setting(cmd, java_home)
 }
@@ -288,10 +314,19 @@ pub fn set_smt_solver_wrapper_path_setting(cmd: &mut Command, current_executable
     cmd.env("PRUSTI_SMT_SOLVER_WRAPPER_PATH", prusti_smt_wrapper_path);
 }
 
-pub fn set_boogie_path_setting(cmd: &mut Command) {
-    if let Ok(path) = env::var("BOOGIE_EXE") {
-        cmd.env("PRUSTI_BOOGIE_PATH", path);
-    }
+pub fn set_boogie_path_setting(cmd: &mut Command, current_executable_dir: &Path) {
+    let boogie_exe = if let Ok(path) = env::var("BOOGIE_EXE") {
+        path.into()
+    } else if let Some(path) = find_boogie_exe(current_executable_dir) {
+        path
+    } else {
+        panic!(
+            "Could not find the BOOGIE executable. \
+            Please set the BOOGIE_EXE environment variable, which should contain the path of a \
+            BOOGIE executable."
+        );
+    };
+    cmd.env("PRUSTI_BOOGIE_PATH", boogie_exe);
 }
 
 pub fn set_viper_home_setting(cmd: &mut Command, current_executable_dir: &Path) {

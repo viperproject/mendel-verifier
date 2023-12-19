@@ -59,6 +59,11 @@ fn log_methods(
 
 pub fn optimize_program(p: Program, source_file_name: &str) -> Program {
     let mut program = p;
+
+    if config::safe_clients_encoder() {
+        return program;
+    }
+
     let optimizations = config::optimizations();
     debug!("Enabled optimisations: {:?}", optimizations);
 

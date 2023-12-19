@@ -10,33 +10,29 @@ use crate::{
 };
 use log::{error, trace};
 use prusti_rustc_interface::{
-    borrowck::{consumers::RichLocation, BodyWithBorrowckFacts},
+    borrowck::consumers::{LocationTable, PoloniusInput, PoloniusOutput, RichLocation},
     data_structures::fx::FxHashMap,
-    middle::{mir, ty::TyCtxt},
+    middle::{mir, ty},
 };
 
 pub struct MaybeBorrowedAnalysis<'mir, 'tcx: 'mir> {
-    tcx: TyCtxt<'tcx>,
-    body_with_facts: &'mir BodyWithBorrowckFacts<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+    body: &'mir mir::Body<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> MaybeBorrowedAnalysis<'mir, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body_with_facts: &'mir BodyWithBorrowckFacts<'tcx>) -> Self {
-        MaybeBorrowedAnalysis {
-            tcx,
-            body_with_facts,
-        }
+    pub fn new(tcx: ty::TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Self {
+        MaybeBorrowedAnalysis { tcx, body }
     }
 
     pub fn run_analysis(
         &self,
+        input_facts: &PoloniusInput,
+        output_facts: &PoloniusOutput,
+        location_table: &LocationTable,
     ) -> AnalysisResult<PointwiseState<'mir, 'tcx, MaybeBorrowedState<'tcx>>> {
-        let body = &self.body_with_facts.body;
-        let location_table = &self.body_with_facts.location_table;
-        let borrowck_in_facts = &self.body_with_facts.input_facts;
-        let borrowck_out_facts = self.body_with_facts.output_facts.as_ref();
-        let loan_issued_at = &borrowck_in_facts.loan_issued_at;
-        let loan_live_at = &borrowck_out_facts.loan_live_at;
+        let loan_issued_at = &input_facts.loan_issued_at;
+        let loan_live_at = &output_facts.loan_live_at;
         let loan_issued_at_location: FxHashMap<_, mir::Location> = loan_issued_at
             .iter()
             .map(|&(_, loan, point_index)| {
@@ -47,7 +43,8 @@ impl<'mir, 'tcx: 'mir> MaybeBorrowedAnalysis<'mir, 'tcx> {
                 (loan, location)
             })
             .collect();
-        let mut analysis_state: PointwiseState<MaybeBorrowedState> = PointwiseState::default(body);
+        let mut analysis_state: PointwiseState<MaybeBorrowedState> =
+            PointwiseState::default(self.body);
 
         trace!("There are {} loan_live_at output facts", loan_live_at.len());
         for (&point_index, loans) in loan_live_at.iter() {
@@ -58,34 +55,39 @@ impl<'mir, 'tcx: 'mir> MaybeBorrowedAnalysis<'mir, 'tcx> {
                 for loan in loans {
                     let loan_location = loan_issued_at_location[loan];
                     let loan_stmt =
-                        &body[loan_location.block].statements[loan_location.statement_index];
+                        &self.body[loan_location.block].statements[loan_location.statement_index];
                     if let mir::StatementKind::Assign(box (lhs, rhs)) = &loan_stmt.kind {
-                        if let mir::Rvalue::Ref(_region, borrow_kind, borrowed_place) = rhs {
-                            trace!(
-                                "    Loan {:?}: {:?} = & {:?} {:?}",
-                                loan,
-                                lhs,
-                                borrow_kind,
-                                borrowed_place,
-                            );
-                            let blocked_place =
-                                get_blocked_place(self.tcx, (*borrowed_place).into());
-                            trace!("      Blocking {:?}: {:?}", borrow_kind, blocked_place);
-                            match borrow_kind {
-                                mir::BorrowKind::Shared => {
-                                    state.maybe_shared_borrowed.insert(blocked_place);
-                                }
-                                mir::BorrowKind::Mut { .. } => {
-                                    state.maybe_mut_borrowed.insert(blocked_place);
-                                }
-                                _ => {
-                                    error!("Unexpected borrow kind: {:?}", borrow_kind);
-                                    return Err(AnalysisError::UnsupportedStatement(loan_location));
+                        match rhs {
+                            mir::Rvalue::Ref(_region, borrow_kind, borrowed_place) => {
+                                trace!(
+                                    "    Loan {:?}: {:?} = & {:?} {:?}",
+                                    loan,
+                                    lhs,
+                                    borrow_kind,
+                                    borrowed_place,
+                                );
+                                let blocked_place =
+                                    get_blocked_place(self.tcx, (*borrowed_place).into());
+                                trace!("      Blocking {:?}: {:?}", borrow_kind, blocked_place);
+                                match borrow_kind {
+                                    mir::BorrowKind::Shared => {
+                                        state.maybe_shared_borrowed.insert(blocked_place);
+                                    }
+                                    mir::BorrowKind::Mut { .. } => {
+                                        state.maybe_mut_borrowed.insert(blocked_place);
+                                    }
+                                    _ => {
+                                        error!("Unexpected borrow kind: {:?}", borrow_kind);
+                                        return Err(AnalysisError::UnsupportedStatement(
+                                            loan_location,
+                                        ));
+                                    }
                                 }
                             }
-                        } else {
-                            error!("Unexpected RHS: {:?}", rhs);
-                            return Err(AnalysisError::UnsupportedStatement(loan_location));
+                            _ => {
+                                error!("Unexpected RHS: {:?}", rhs);
+                                return Err(AnalysisError::UnsupportedStatement(loan_location));
+                            }
                         }
                     } else {
                         error!(
@@ -99,7 +101,7 @@ impl<'mir, 'tcx: 'mir> MaybeBorrowedAnalysis<'mir, 'tcx> {
         }
 
         // Set state_after_block
-        for (block, block_data) in body.basic_blocks.iter_enumerated() {
+        for (block, block_data) in self.body.basic_blocks.iter_enumerated() {
             for successor in block_data.terminator().successors() {
                 let state = analysis_state
                     .lookup_before(mir::Location {

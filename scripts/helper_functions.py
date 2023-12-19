@@ -164,7 +164,7 @@ def get_var_or(name, default):
         return default
 
 
-def run_command(args, env=None, cwd=None, on_exit=None, report_time=False):
+def run_command(args, env=None, cwd=None, on_exit=None, report_time=False, exit_on_error=True):
     """Run a command with the given arguments.
 
     +   ``env`` – an environment in which to run.
@@ -181,7 +181,7 @@ def run_command(args, env=None, cwd=None, on_exit=None, report_time=False):
         print(datetime.datetime.now() - start_time)
     if on_exit is not None:
         on_exit()
-    if completed.returncode != 0:
+    if exit_on_error and completed.returncode != 0:
         sys.exit(completed.returncode)
 
 

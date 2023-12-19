@@ -4,25 +4,27 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use log::debug;
+use prusti_rustc_interface::middle::ty;
 use prusti_common::{vir_local, vir_expr};
 use vir_crate::polymorphic::{self as vir};
 use vir_crate::common::identifier::WithIdentifier;
 use super::errors::EncodingResult;
 use super::high::builtin_functions::HighBuiltinFunctionEncoderInterface;
-use super::versioning;
+use super::safe_clients::{
+    bump_version, version_domain, address_domain,
+    snapshot_domains::{mem_snapshot_domain, value_snapshot_domain},
+    ownership_domain,
+};
 
 const PRIMITIVE_VALID_DOMAIN_NAME: &str = "PrimitiveValidDomain";
+const NAT_DOMAIN_NAME: &str = "NatDomain";
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum BuiltinMethodKind {
-    HavocBool,
-    HavocInt,
-    HavocF32,
-    HavocF64,
-    HavocBV(vir::BitVector),
-    HavocRef,
-    BumpMemVersion,
+    Havoc(vir::Type),
+    BumpVersion,
 }
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
@@ -52,9 +54,14 @@ pub enum BuiltinFunctionKind {
 }
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
-pub enum BuiltinDomainKind {
+pub enum BuiltinDomainKind<'tcx> {
     Nat,
     Primitive,
+    Version,
+    Address(ty::Ty<'tcx>),
+    MemorySnapshot(ty::Ty<'tcx>),
+    ValueSnapshot(ty::Ty<'tcx>),
+    Ownership(ty::Ty<'tcx>),
 }
 
 pub struct BuiltinEncoder<'p, 'v: 'p, 'tcx: 'v> {
@@ -68,41 +75,39 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
         }
     }
 
-    pub fn encode_builtin_method_name(&self, method: BuiltinMethodKind) -> String {
+    pub fn encode_builtin_method_name(&self, method: &BuiltinMethodKind) -> String {
         match method {
-            BuiltinMethodKind::HavocBool => "builtin$havoc_bool".to_string(),
-            BuiltinMethodKind::HavocInt => "builtin$havoc_int".to_string(),
-            BuiltinMethodKind::HavocBV(variant)  => format!("builtin$havoc_{variant}"),
-            BuiltinMethodKind::HavocF32 => "builtin$havoc_f32".to_string(),
-            BuiltinMethodKind::HavocF64 => "builtin$havoc_f64".to_string(),
-            BuiltinMethodKind::HavocRef => "builtin$havoc_ref".to_string(),
-            BuiltinMethodKind::BumpMemVersion => versioning::bump_mem_version_name().to_string(),
+            BuiltinMethodKind::Havoc(vir_ty) => {
+                let ty_name = vir_ty.name();
+                format!("builtin$havoc_{ty_name}")
+            }
+            BuiltinMethodKind::BumpVersion => {
+                bump_version::bump_version_method_name()
+            }
         }
     }
 
-    pub fn encode_builtin_method_def(&self, method: BuiltinMethodKind) -> EncodingResult<vir::BodylessMethod> {
-        let method_name = self.encode_builtin_method_name(method);
-        let return_type = match method {
-            BuiltinMethodKind::HavocBool => vir::Type::Bool,
-            BuiltinMethodKind::HavocInt => vir::Type::Int,
-            BuiltinMethodKind::HavocBV(variant) => vir::Type::BitVector(variant),
-            BuiltinMethodKind::HavocF32 => vir::Type::Float(vir::Float::F32),
-            BuiltinMethodKind::HavocF64 => vir::Type::Float(vir::Float::F64),
-            BuiltinMethodKind::HavocRef => vir::Type::typed_ref(""),
-            BuiltinMethodKind::BumpMemVersion => {
-                return Ok(versioning::bump_mem_version_definition());
+    pub fn encode_builtin_method_def(&self, method: &BuiltinMethodKind) -> EncodingResult<vir::BodylessMethod> {
+        debug!("encode_builtin_method_def {:?}", method);
+        match method {
+            BuiltinMethodKind::Havoc(vir_ty) => {
+                let method_name = self.encode_builtin_method_name(method);
+                Ok(vir::BodylessMethod {
+                    name: method_name,
+                    formal_args: vec![],
+                    formal_returns: vec![vir_local!{ ret: {vir_ty.clone()} }],
+                    pres: vec![],
+                    posts: vec![],
+                })
             }
-        };
-        Ok(vir::BodylessMethod {
-            name: method_name,
-            formal_args: vec![],
-            formal_returns: vec![vir_local!{ ret: {return_type} }],
-            pres: vec![],
-            posts: vec![],
-        })
+            BuiltinMethodKind::BumpVersion => {
+                bump_version::build_bump_version_method(self.encoder)
+            }
+        }
     }
 
     pub fn encode_builtin_function_def(&self, function: BuiltinFunctionKind) -> vir::Function {
+        debug!("encode_builtin_function_def {:?}", function);
         let (fn_name, type_arguments) = self.encoder.encode_builtin_function_name_with_type_args(&function);
         match function {
             BuiltinFunctionKind::Unreachable(typ) => vir::Function {
@@ -224,24 +229,49 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
         }
     }
 
-    pub fn encode_builtin_domain(&self, kind: BuiltinDomainKind) -> EncodingResult<vir::Domain> {
+    pub fn encode_builtin_domain_name(&self, kind: BuiltinDomainKind<'tcx>) -> EncodingResult<String> {
+        debug!("encode_builtin_domain_name {:?}", kind);
         Ok(match kind {
-            BuiltinDomainKind::Nat => self.encode_nat_builtin_domain(),
-            BuiltinDomainKind::Primitive => self.encode_primitive_builtin_domain(),
+            BuiltinDomainKind::Nat => NAT_DOMAIN_NAME.to_string(),
+            BuiltinDomainKind::Primitive => PRIMITIVE_VALID_DOMAIN_NAME.to_string(),
+            BuiltinDomainKind::Version => version_domain::version_domain_name(),
+            BuiltinDomainKind::Address(ty) => address_domain::address_domain_name(self.encoder, ty)?,
+            BuiltinDomainKind::MemorySnapshot(ty) => mem_snapshot_domain::mem_snapshot_domain_name(self.encoder, ty)?,
+            BuiltinDomainKind::ValueSnapshot(ty) => value_snapshot_domain::value_snapshot_domain_name(self.encoder, ty)?,
+            BuiltinDomainKind::Ownership(ty) => ownership_domain::ownership_domain_name(self.encoder, ty)?,
         })
     }
 
-    pub fn encode_builtin_domain_type(&self, kind: BuiltinDomainKind) -> EncodingResult<vir::Type> {
+    pub fn encode_builtin_domain(&self, kind: BuiltinDomainKind<'tcx>) -> EncodingResult<vir::Domain> {
+        debug!("encode_builtin_domain {:?}", kind);
+        let domain = match kind {
+            BuiltinDomainKind::Nat => self.encode_nat_builtin_domain(),
+            BuiltinDomainKind::Primitive => self.encode_primitive_builtin_domain(),
+            BuiltinDomainKind::Version => version_domain::build_version_domain(),
+            BuiltinDomainKind::Address(ty) => address_domain::build_address_domain(self.encoder, ty)?,
+            BuiltinDomainKind::MemorySnapshot(ty) => mem_snapshot_domain::build_mem_snapshot_domain(self.encoder, ty)?,
+            BuiltinDomainKind::ValueSnapshot(ty) => value_snapshot_domain::build_value_snapshot_domain(self.encoder, ty)?,
+            BuiltinDomainKind::Ownership(ty) => ownership_domain::build_ownership_domain(self.encoder, ty)?,
+        };
+        debug_assert_eq!(domain.get_identifier(), self.encode_builtin_domain_name(kind)?);
+        Ok(domain)
+    }
+
+    pub fn encode_builtin_domain_type(&self, kind: BuiltinDomainKind<'tcx>) -> EncodingResult<vir::Type> {
         Ok(match kind {
             BuiltinDomainKind::Nat | BuiltinDomainKind::Primitive => {
                 vir::Type::domain(self.encode_builtin_domain(kind)?.name)
             }
+            BuiltinDomainKind::Version => version_domain::version_domain_type(),
+            BuiltinDomainKind::Address(ty) => address_domain::address_domain_type(self.encoder, ty)?,
+            BuiltinDomainKind::MemorySnapshot(ty) => mem_snapshot_domain::mem_snapshot_domain_type(self.encoder, ty)?,
+            BuiltinDomainKind::ValueSnapshot(ty) => value_snapshot_domain::value_snapshot_domain_type(self.encoder, ty)?,
+            BuiltinDomainKind::Ownership(ty) => ownership_domain::ownership_domain_type(self.encoder, ty)?,
         })
     }
 
     fn encode_nat_builtin_domain(&self) -> vir::Domain {
-        let nat_domain_name = "NatDomain";
-        // snapshot::NAT_DOMAIN_NAME;
+        let nat_domain_name = NAT_DOMAIN_NAME;
         let zero = vir::DomainFunc {
             name: "zero".to_owned(),
             type_arguments: vec![],

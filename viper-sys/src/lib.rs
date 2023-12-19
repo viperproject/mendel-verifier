@@ -6,9 +6,12 @@
 
 #![deny(unused_must_use)]
 
-#[rustfmt::skip]
-#[path = "../gen/mod.rs"]
-pub mod wrappers;
+// Import from `target/debug/build/viper-sys-<...>/out/import_wrappers.rs`
+include!(concat!(env!("OUT_DIR"), "/import_wrappers.rs"));
+
+// Dummy import to easily jump to the module using an IDE.
+#[allow(unused_imports)]
+use wrappers as _jump_to_wrappers;
 
 use jni::{errors::Result, objects::JObject, JNIEnv};
 

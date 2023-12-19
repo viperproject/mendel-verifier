@@ -17,6 +17,9 @@ pub enum SpecAttributeKind {
     RefineSpec = 9,
     Terminates = 10,
     PrintCounterexample = 11,
+    PureUnstable = 13,
+    PureMemory = 14,
+    GhostFn = 15,
 }
 
 impl TryFrom<String> for SpecAttributeKind {
@@ -35,6 +38,9 @@ impl TryFrom<String> for SpecAttributeKind {
             "refine_spec" => Ok(SpecAttributeKind::RefineSpec),
             "model" => Ok(SpecAttributeKind::Model),
             "print_counterexample" => Ok(SpecAttributeKind::PrintCounterexample),
+            "pure_unstable" => Ok(SpecAttributeKind::PureUnstable),
+            "pure_memory" => Ok(SpecAttributeKind::PureMemory),
+            "ghost_fn" => Ok(SpecAttributeKind::GhostFn),
             _ => Err(name),
         }
     }

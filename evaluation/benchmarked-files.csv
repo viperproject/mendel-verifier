@@ -1,0 +1,12 @@
+prusti-tests/tests/verify_safe_clients/fail/clients/arc.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/arc_rwlock.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/atomic.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/cell.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/mutex.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/rc.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/refcell.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/unsafecell.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/box.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/mutex_inv.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/verus_cell.rs
+prusti-tests/tests/verify_safe_clients/fail/clients/verus_ptr.rs

@@ -12,7 +12,6 @@ error_chain::error_chain! {
     foreign_links {
         Io(std::io::Error);
         Utf8Error(std::str::Utf8Error);
-        PathPersistError(tempfile::PathPersistError);
         // FIXME: why is this required?
         UnknownJniError(jni::errors::Error);
         UnknownJvmError(jni::JvmError);

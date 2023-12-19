@@ -133,6 +133,7 @@ pub enum ErrorCtxt {
     PackageMagicWandForPostcondition,
     /// Apply a magic wand as a borrow expires, relevant for pledge conditions
     ApplyMagicWandOnExpiry,
+    AssertPledgeOnExpiry,
     /// A diverging function call performed in a pure function
     DivergingCallInPureFunction,
     /// A Viper pure function call with `false` precondition that encodes a Rust panic in a pure function
@@ -553,6 +554,11 @@ impl<'tcx> ErrorManager<'tcx> {
             }
 
             ("apply.failed:assertion.false", ErrorCtxt::ApplyMagicWandOnExpiry) => {
+                PrustiError::verification("obligation might not hold on borrow expiry", error_span)
+                    .set_failing_assertion(opt_cause_span)
+            }
+
+            ("assert.failed:assertion.false", ErrorCtxt::AssertPledgeOnExpiry) => {
                 PrustiError::verification("obligation might not hold on borrow expiry", error_span)
                     .set_failing_assertion(opt_cause_span)
             }

@@ -25,6 +25,23 @@ impl VerificationResult {
     }
 }
 
+impl std::fmt::Display for VerificationResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VerificationResult::Success => write!(f, "Success"),
+            VerificationResult::Failure(errors) => {
+                write!(f, "Failure ({} errors)", errors.len())
+            }
+            VerificationResult::ConsistencyErrors(errors) => {
+                write!(f, "Consistency errors ({} errors)", errors.len())
+            }
+            VerificationResult::JavaException(exception) => {
+                write!(f, "Java exception {:?}", exception.get_message())
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationError {
     pub full_id: String,

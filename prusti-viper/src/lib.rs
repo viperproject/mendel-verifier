@@ -14,6 +14,9 @@
 #![feature(drain_filter)]
 #![feature(let_chains)]
 #![feature(type_changing_struct_update)]
+#![feature(negative_impls)]
+#![feature(once_cell)]
+#![feature(option_result_contains)]
 
 #![deny(unused_must_use)]
 #![deny(unreachable_patterns)]

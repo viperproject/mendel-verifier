@@ -597,7 +597,8 @@ impl<'p, 'v: 'p, 'tcx: 'v> PureFunctionEncoder<'p, 'v, 'tcx> {
     }
 }
 
-pub(super) struct FunctionCallInfo {
+#[derive(Debug)]
+pub(crate) struct FunctionCallInfo {
     pub name: String,
     pub type_arguments: Vec<vir::Type>,
     pub formal_args: Vec<vir::LocalVar>,

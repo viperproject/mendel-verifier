@@ -1,0 +1,1026 @@
+Analyzing file $DIR/enum.rs using DefinitelyUnreachableAnalysis...
+Result for function main():
+{
+  "bb0": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_1)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_2)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_3)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_4)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _4 = const /"a/""
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _3 = &(*_4)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: _2 = <str as std::string::ToString>::to_string(move _3) -> [return: bb1, unwind: bb19]",
+    {
+      "bb1": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb19": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb1": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_3)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_5)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_6)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_7)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _7 = const /"b/""
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _6 = &(*_7)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: _5 = <str as std::string::ToString>::to_string(move _6) -> [return: bb2, unwind: bb18]",
+    {
+      "bb18": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb2": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb2": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_6)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_8)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_9)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_10)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _10 = const /"c/""
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _9 = &(*_10)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: _8 = <str as std::string::ToString>::to_string(move _9) -> [return: bb3, unwind: bb17]",
+    {
+      "bb17": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb3": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb3": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_9)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _1 = T { a: move _2, b: move _5, c: move _8 }"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_8) -> [return: bb4, unwind: bb17]",
+    {
+      "bb17": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb4": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb4": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_8)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_5) -> [return: bb5, unwind: bb18]",
+    {
+      "bb18": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb5": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb5": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_5)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_2) -> [return: bb6, unwind: bb19]",
+    {
+      "bb19": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb6": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb6": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_2)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: FakeRead(ForLet(None), _1)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_10)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_7)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_4)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_11)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_12)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _12 = move _1"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_13)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_14)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_15)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _15 = const /"d/""
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _14 = &(*_15)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: _13 = <str as std::string::ToString>::to_string(move _14) -> [return: bb7, unwind: bb15]",
+    {
+      "bb15": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb7": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb7": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_14)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _11 = U { t: move _12, d: move _13 }"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_13) -> [return: bb8, unwind: bb15]",
+    {
+      "bb15": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb8": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb8": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_13)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_12) -> [return: bb9, unwind: bb16]",
+    {
+      "bb16": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb9": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb9": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_12)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: FakeRead(ForLet(None), _11)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_15)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_16)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _16 = &mut _11"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: FakeRead(ForLet(None), _16)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_17)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_18)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _18 = &mut ((*_16).0: T)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [
+            "((*_16).1: std::string::String)"
+          ],
+          "shallowly_unreachable": [
+            "_16"
+          ]
+        },
+        "statement: _17 = &mut ((*_18).1: std::string::String)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [
+            "((*_16).1: std::string::String)",
+            "((*_18).0: std::string::String)",
+            "((*_18).2: std::string::String)"
+          ],
+          "shallowly_unreachable": [
+            "_16",
+            "_18"
+          ]
+        },
+        "statement: FakeRead(ForLet(None), _17)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [
+            "((*_16).1: std::string::String)",
+            "((*_18).0: std::string::String)",
+            "((*_18).2: std::string::String)"
+          ],
+          "shallowly_unreachable": [
+            "_16",
+            "_18"
+          ]
+        },
+        "statement: StorageLive(_19)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [
+            "((*_16).1: std::string::String)",
+            "((*_18).0: std::string::String)",
+            "((*_18).2: std::string::String)"
+          ],
+          "shallowly_unreachable": [
+            "_16",
+            "_18"
+          ]
+        },
+        "statement: StorageLive(_20)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [
+            "((*_16).1: std::string::String)",
+            "((*_18).0: std::string::String)",
+            "((*_18).2: std::string::String)"
+          ],
+          "shallowly_unreachable": [
+            "_16",
+            "_18"
+          ]
+        },
+        "statement: _20 = move _17"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [
+        "((*_16).1: std::string::String)",
+        "((*_18).0: std::string::String)",
+        "((*_18).2: std::string::String)"
+      ],
+      "shallowly_unreachable": [
+        "_16",
+        "_18"
+      ]
+    },
+    "terminator: _19 = std::mem::drop::<&mut std::string::String>(move _20) -> [return: bb10, unwind: bb14]",
+    {
+      "bb10": [
+        "state:",
+        {
+          "deeply_unreachable": [
+            "((*_16).1: std::string::String)",
+            "((*_18).0: std::string::String)",
+            "((*_18).2: std::string::String)"
+          ],
+          "shallowly_unreachable": [
+            "_16",
+            "_18"
+          ]
+        }
+      ],
+      "bb14": [
+        "state:",
+        {
+          "deeply_unreachable": [
+            "((*_16).1: std::string::String)",
+            "((*_18).0: std::string::String)",
+            "((*_18).2: std::string::String)"
+          ],
+          "shallowly_unreachable": [
+            "_16",
+            "_18"
+          ]
+        }
+      ]
+    }
+  ],
+  "bb10": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_20)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_19)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_21)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageLive(_22)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _22 = move _16"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: _21 = std::mem::drop::<&mut U>(move _22) -> [return: bb11, unwind: bb14]",
+    {
+      "bb11": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb14": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb11": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_22)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_21)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: _0 = const ()"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_18)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_17)"
+      ],
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_16)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_11) -> [return: bb12, unwind: bb16]",
+    {
+      "bb12": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb16": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb12": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_11)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_1) -> [return: bb13, unwind: bb19]",
+    {
+      "bb13": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ],
+      "bb19": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb13": [
+    [
+      [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        },
+        "statement: StorageDead(_1)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: return",
+    {}
+  ],
+  "bb14": [
+    [],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_11) -> bb16",
+    {
+      "bb16": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb15": [
+    [],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_12) -> bb16",
+    {
+      "bb16": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb16": [
+    [],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_1) -> bb19",
+    {
+      "bb19": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb17": [
+    [],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_5) -> bb18",
+    {
+      "bb18": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb18": [
+    [],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: drop(_2) -> bb19",
+    {
+      "bb19": [
+        "state:",
+        {
+          "deeply_unreachable": [],
+          "shallowly_unreachable": []
+        }
+      ]
+    }
+  ],
+  "bb19": [
+    [],
+    "state before terminator:",
+    {
+      "deeply_unreachable": [],
+      "shallowly_unreachable": []
+    },
+    "terminator: resume",
+    {}
+  ]
+}

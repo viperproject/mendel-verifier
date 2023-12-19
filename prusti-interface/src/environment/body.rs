@@ -162,6 +162,19 @@ impl<'tcx> EnvBody<'tcx> {
         caller_def_id: Option<DefId>,
         body: MirBody<'tcx>,
     ) -> MirBody<'tcx> {
+        /*
+        if cfg!(debug_assertions) {
+            let identity_substs = ty::List::identity_for_item(self.tcx, def_id);
+            // Closures have weird rules.
+            if !self.tcx.is_closure(def_id) {
+                debug_assert!(
+                    substs.len() == identity_substs.len(),
+                    "Tried to monomorphize {def_id:?} with {substs:?}, but the compiler expects \
+                    {identity_substs:?}",
+                );
+            }
+        }
+        */
         if let Entry::Vacant(v) =
             self.monomorphised_bodies
                 .borrow_mut()

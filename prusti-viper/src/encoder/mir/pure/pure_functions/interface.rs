@@ -1,19 +1,25 @@
 //! A public interface to the pure function encoder.
 
 use super::encoder_poly::{FunctionCallInfo, FunctionCallInfoHigh, PureFunctionEncoder};
-use crate::encoder::{
-    errors::{SpannedEncodingResult, WithSpan},
-    mir::specifications::SpecificationsInterface,
-    snapshot::interface::SnapshotEncoderInterface,
-    stub_function_encoder::StubFunctionEncoder,
+use crate::{
+    encoder::{
+        errors::{SpannedEncodingResult, WithSpan},
+        mir::specifications::SpecificationsInterface,
+        safe_clients::{self, pure_encoder::CommonPureEncoder},
+        snapshot::interface::SnapshotEncoderInterface,
+        stub_function_encoder::StubFunctionEncoder,
+        Encoder,
+    },
+    error_internal, error_unsupported,
 };
 use log::{debug, trace};
 use prusti_common::config;
-use prusti_interface::data::ProcedureDefId;
-use prusti_rustc_interface::middle::{ty, ty::subst::SubstsRef};
+use prusti_interface::{data::ProcedureDefId, specs::typed::ProcedureSpecificationKind};
+use prusti_rustc_interface::{
+    middle::{ty, ty::subst::SubstsRef},
+    span::Span,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
-
-use prusti_interface::specs::typed::ProcedureSpecificationKind;
 use std::cell::RefCell;
 use vir_crate::{common::identifier::WithIdentifier, high as vir_high, polymorphic as vir_poly};
 
@@ -193,9 +199,7 @@ pub(crate) trait PureFunctionEncoderInterface<'v, 'tcx> {
     fn get_proc_def_id(&self, identifier: String) -> Option<ProcedureDefId>;
 }
 
-impl<'v, 'tcx: 'v> PureFunctionEncoderInterface<'v, 'tcx>
-    for crate::encoder::encoder::Encoder<'v, 'tcx>
-{
+impl<'v, 'tcx: 'v> PureFunctionEncoderInterface<'v, 'tcx> for Encoder<'v, 'tcx> {
     fn get_proc_def_id(&self, identifier: String) -> Option<ProcedureDefId> {
         self.pure_function_encoder_state
             .function_proc_ids
@@ -286,7 +290,7 @@ impl<'v, 'tcx: 'v> PureFunctionEncoderInterface<'v, 'tcx>
             "procedure is not marked as pure: {proc_def_id:?}"
         );
 
-        let mir_span = self.env().query.get_def_span(proc_def_id);
+        let span = self.env().query.get_def_span(proc_def_id);
         let key = compute_key(self, proc_def_id, parent_def_id, substs)?;
         if !self
             .pure_function_encoder_state
@@ -306,91 +310,46 @@ impl<'v, 'tcx: 'v> PureFunctionEncoderInterface<'v, 'tcx>
                 .borrow_mut()
                 .insert(key);
 
-            let mut pure_function_encoder = PureFunctionEncoder::new(
-                self,
-                proc_def_id,
-                PureEncodingContext::Code,
-                parent_def_id,
-                substs,
-            );
+            let maybe_function = if config::safe_clients_encoder() {
+                safe_clients_pure_function_encoder(self, proc_def_id, parent_def_id, substs, span)
+            } else {
+                standard_pure_function_encoder(self, proc_def_id, parent_def_id, substs, span)
+            };
 
-            let maybe_identifier: SpannedEncodingResult<vir_poly::FunctionIdentifier> = (|| {
-                let proc_kind = self.get_proc_kind(proc_def_id, Some(substs));
-                let is_bodyless = self.is_trusted(proc_def_id, Some(substs))
-                    || !self.env().query.has_body(proc_def_id);
-                let mut function = if is_bodyless {
-                    pure_function_encoder.encode_bodyless_function()?
-                } else {
-                    match proc_kind {
-                        ProcedureSpecificationKind::Predicate(Some(predicate_body)) => {
-                            pure_function_encoder.encode_predicate_function(&predicate_body)?
-                        }
-                        ProcedureSpecificationKind::Predicate(None) => {
-                            pure_function_encoder.encode_bodyless_function()?
-                        }
-                        ProcedureSpecificationKind::Pure => {
-                            let function = pure_function_encoder.encode_function()?;
-                            if config::use_new_encoder() {
-                                // Test the new encoding.
-                                let _ = super::encoder_high::encode_function_decl(
-                                    self,
-                                    proc_def_id,
-                                    proc_def_id,
-                                    substs,
-                                )?;
-                            }
-                            function
-                        }
-                        ProcedureSpecificationKind::Impure => {
-                            unreachable!("trying to encode an impure function in pure encoder")
-                        }
-                    }
-                };
-
-                let needs_patching = matches!(
-                    proc_kind,
-                    ProcedureSpecificationKind::Pure
-                        | ProcedureSpecificationKind::Predicate(Some(_)),
-                );
-                if needs_patching {
-                    self.mirror_encoder
-                        .borrow_mut()
-                        .encode_mirrors(proc_def_id, &mut function);
-                }
-
-                function = self
-                    .patch_snapshots_function(function)
-                    .with_span(mir_span)?;
-
-                self.log_vir_program_before_viper(function.to_string());
-                Ok(self.insert_function(function))
-            })(
-            );
-            match maybe_identifier {
-                Ok(identifier) => {
-                    self.pure_function_encoder_state
-                        .function_identifiers
-                        .borrow_mut()
-                        .insert(key, identifier);
-                }
+            // In case of encoding error, generate a stub function
+            let function = match maybe_function {
+                Ok(function) => function,
                 Err(error) => {
+                    debug!("Error encoding pure function {proc_def_id:?}: {error:?}");
                     self.register_encoding_error(error);
-                    debug!("Error encoding pure function: {:?}", proc_def_id);
-                    let body = self
-                        .env()
-                        .body
-                        .get_pure_fn_body(proc_def_id, substs, parent_def_id);
                     // TODO(tymap): does stub encoder need substs?
-                    let stub_encoder = StubFunctionEncoder::new(self, proc_def_id, &body, substs);
-                    let function = stub_encoder.encode_function()?;
-                    self.log_vir_program_before_viper(function.to_string());
-                    let identifier = self.insert_function(function);
-                    self.pure_function_encoder_state
-                        .function_identifiers
-                        .borrow_mut()
-                        .insert(key, identifier);
+                    if config::safe_clients_encoder() {
+                        let stub_encoder = safe_clients::pure_encoder::PureBodylessEncoder::new(
+                            self,
+                            proc_def_id,
+                            parent_def_id,
+                            substs,
+                            PureEncodingContext::Code,
+                        )?;
+                        stub_encoder.encode_stub_function()?
+                    } else {
+                        let body =
+                            self.env()
+                                .body
+                                .get_pure_fn_body(proc_def_id, substs, parent_def_id);
+                        let stub_encoder =
+                            StubFunctionEncoder::new(self, proc_def_id, &body, substs);
+                        stub_encoder.encode_function()?
+                    }
                 }
-            }
+            };
+
+            self.log_vir_program_before_viper(function.to_string());
+            let identifier = self.insert_function(function);
+            self.pure_function_encoder_state
+                .function_identifiers
+                .borrow_mut()
+                .insert(key, identifier);
         }
 
         trace!("[exit] encode_pure_function_def({:?})", proc_def_id);
@@ -441,18 +400,30 @@ impl<'v, 'tcx: 'v> PureFunctionEncoderInterface<'v, 'tcx>
         if let std::collections::hash_map::Entry::Vacant(e) = call_infos.entry(key) {
             // Compute information necessary to encode the function call and
             // memoize it.
-            let pure_function_encoder = PureFunctionEncoder::new(
-                self,
-                proc_def_id,
-                PureEncodingContext::Code,
-                parent_def_id,
-                substs,
-            );
-            let function_call_info = pure_function_encoder.encode_function_call_info()?;
+            let function_call_info = if config::safe_clients_encoder() {
+                let pure_function_encoder = safe_clients::pure_encoder::PureBodylessEncoder::new(
+                    self,
+                    proc_def_id,
+                    parent_def_id,
+                    substs,
+                    PureEncodingContext::Code,
+                )?;
+                pure_function_encoder.encode_function_call_info()?
+            } else {
+                let pure_function_encoder = PureFunctionEncoder::new(
+                    self,
+                    proc_def_id,
+                    PureEncodingContext::Code,
+                    parent_def_id,
+                    substs,
+                );
+                pure_function_encoder.encode_function_call_info()?
+            };
 
             // Save the information necessary to encode the function definition.
             let function_identifier: vir_poly::FunctionIdentifier =
                 WithIdentifier::get_identifier(&function_call_info).into();
+
             let mut function_descriptions = self
                 .pure_function_encoder_state
                 .function_descriptions
@@ -589,4 +560,153 @@ impl<'v, 'tcx: 'v> PureFunctionEncoderInterface<'v, 'tcx>
             .is_none());
         Ok(())
     }
+}
+
+/// Encodes a pure function with the standard (non-safe-clients) encoder.
+fn standard_pure_function_encoder<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    proc_def_id: ProcedureDefId,
+    parent_def_id: ProcedureDefId,
+    substs: SubstsRef<'tcx>,
+    span: Span,
+) -> SpannedEncodingResult<vir_poly::Function> {
+    let mut pure_function_encoder = PureFunctionEncoder::new(
+        encoder,
+        proc_def_id,
+        PureEncodingContext::Code,
+        parent_def_id,
+        substs,
+    );
+
+    let proc_kind = encoder.get_proc_kind(proc_def_id, Some(substs));
+    let is_bodyless =
+        encoder.is_trusted(proc_def_id, Some(substs)) || !encoder.env().query.has_body(proc_def_id);
+    let mut function = if is_bodyless {
+        pure_function_encoder.encode_bodyless_function()?
+    } else {
+        match proc_kind {
+            ProcedureSpecificationKind::Predicate(Some(predicate_body)) => {
+                pure_function_encoder.encode_predicate_function(&predicate_body)?
+            }
+            ProcedureSpecificationKind::Predicate(None) => {
+                pure_function_encoder.encode_bodyless_function()?
+            }
+            ProcedureSpecificationKind::Pure => {
+                let function = pure_function_encoder.encode_function()?;
+                if config::use_new_encoder() {
+                    // Test the new encoding.
+                    let _ = super::encoder_high::encode_function_decl(
+                        encoder,
+                        proc_def_id,
+                        proc_def_id,
+                        substs,
+                    )?;
+                }
+                function
+            }
+            ProcedureSpecificationKind::Impure => {
+                unreachable!("trying to encode an impure function in pure encoder")
+            }
+            ProcedureSpecificationKind::PureMemory => {
+                error_unsupported!(span =>
+                    "pure memory functions are not supported in the current encoder"
+                )
+            }
+            ProcedureSpecificationKind::PureUnstable => {
+                error_unsupported!(span =>
+                    "pure unstable functions are not supported in the current encoder"
+                )
+            }
+        }
+    };
+
+    let needs_patching = matches!(
+        proc_kind,
+        ProcedureSpecificationKind::Pure | ProcedureSpecificationKind::Predicate(Some(_)),
+    );
+    if needs_patching {
+        encoder
+            .mirror_encoder
+            .borrow_mut()
+            .encode_mirrors(proc_def_id, &mut function);
+    }
+
+    function = encoder.patch_snapshots_function(function).with_span(span)?;
+
+    Ok(function)
+}
+
+/// Encodes a pure function with the safe-clients encoder.
+fn safe_clients_pure_function_encoder<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    def_id: ProcedureDefId,
+    parent_def_id: ProcedureDefId,
+    substs: SubstsRef<'tcx>,
+    span: Span,
+) -> SpannedEncodingResult<vir_poly::Function> {
+    let proc_kind = encoder.get_proc_kind(def_id, Some(substs));
+    let is_bodyless =
+        encoder.is_trusted(def_id, Some(substs)) || !encoder.env().query.has_body(def_id);
+    let function = if is_bodyless {
+        let bodyless_function_encoder = safe_clients::pure_encoder::PureBodylessEncoder::new(
+            encoder,
+            def_id,
+            parent_def_id,
+            substs,
+            PureEncodingContext::Code,
+        )?;
+        bodyless_function_encoder.encode_function()?
+    } else {
+        match proc_kind {
+            ProcedureSpecificationKind::Predicate(None) => {
+                let bodyless_function_encoder =
+                    safe_clients::pure_encoder::PureBodylessEncoder::new(
+                        encoder,
+                        def_id,
+                        parent_def_id,
+                        substs,
+                        PureEncodingContext::Code,
+                    )?;
+                bodyless_function_encoder.encode_function()?
+            }
+            ProcedureSpecificationKind::Predicate(Some(predicate_def_id)) => {
+                let mir =
+                    encoder
+                        .env()
+                        .body
+                        .get_expression_body(predicate_def_id, substs, parent_def_id);
+                let mut predicate_encoder = safe_clients::pure_encoder::PureBodyEncoder::new(
+                    encoder,
+                    predicate_def_id,
+                    parent_def_id,
+                    substs,
+                    mir,
+                    PureEncodingContext::Code,
+                )?;
+                predicate_encoder.encode_function()?
+            }
+            ProcedureSpecificationKind::Pure
+            | ProcedureSpecificationKind::PureMemory
+            | ProcedureSpecificationKind::PureUnstable => {
+                let mir = encoder
+                    .env()
+                    .body
+                    .get_pure_fn_body(def_id, substs, parent_def_id);
+                let mut pure_function_encoder = safe_clients::pure_encoder::PureBodyEncoder::new(
+                    encoder,
+                    def_id,
+                    parent_def_id,
+                    substs,
+                    mir,
+                    PureEncodingContext::Code,
+                )?;
+                pure_function_encoder.encode_function()?
+            }
+            ProcedureSpecificationKind::Impure => {
+                error_internal!(span => "trying to encode an impure function in pure encoder");
+            }
+        }
+    };
+
+    Ok(function)
 }

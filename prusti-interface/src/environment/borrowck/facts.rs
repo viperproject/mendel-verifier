@@ -93,6 +93,11 @@ impl Interner {
         Self { location_table }
     }
 
+    /// Returns the location table.
+    pub fn location_table(&self) -> &LocationTable {
+        &self.location_table
+    }
+
     pub fn get_point_index(&self, point: &Point) -> PointIndex {
         // self.points.get_index(point)
         match point.typ {

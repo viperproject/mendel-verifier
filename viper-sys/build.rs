@@ -6,12 +6,19 @@
 
 use error_chain::ChainedError;
 use jni_gen::*;
-use std::{env, fs, fs::File, io::copy, path::Path};
+use std::{
+    env, fs,
+    fs::File,
+    io::{copy, Write},
+    path::Path,
+};
 use tempfile::Builder;
 
 fn main() {
     env_logger::init();
-    let generated_dir = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("gen");
+    let out_dir_string = env::var("OUT_DIR").unwrap();
+    let out_dir = Path::new(&out_dir_string);
+    let generated_dir = out_dir.join("gen");
 
     let deps_dir = Builder::new().prefix("deps").tempdir().unwrap_or_else(|e| {
         panic!("{}", e);
@@ -90,7 +97,7 @@ fn main() {
                 method!("wrapRefArray"),
             ]),
             java_class!("scala.math.BigInt", vec![
-                constructor!(),
+                constructor!("(Ljava/math/BigInteger;)V"),
             ]),
             java_class!("scala.collection.mutable.ArrayBuffer", vec![
                 constructor!("(I)V"),
@@ -818,6 +825,22 @@ fn main() {
         .generate(&generated_dir)
         .unwrap_or_else(|e| {
             panic!("{}", e.display_chain());
+        });
+
+    // Write a file that imports the generated module by absolute path.
+    let import_src = vec![
+        "#[rustfmt::skip]".to_string(),
+        format!("#[path = \"{}\"]", generated_dir.join("mod.rs").display()),
+        "pub mod wrappers;".to_string(),
+    ]
+    .join("\n");
+    let mut import_file = File::create(out_dir.join("import_wrappers.rs")).unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
+    import_file
+        .write_all(import_src.as_bytes())
+        .unwrap_or_else(|e| {
+            panic!("{}", e);
         });
 
     // Remove the temporary directory

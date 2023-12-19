@@ -132,17 +132,38 @@ fn run_verification_base(group_name: &str, filter: &Option<String>) {
 }
 
 fn run_verification_no_overflow(group_name: &str, filter: &Option<String>) {
-    let _temporary_env_vars = (TemporaryEnvVar::set("PRUSTI_CHECK_OVERFLOWS", "false"),);
+    let _temporary_env_vars = (
+        TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "false"),
+        TemporaryEnvVar::set("PRUSTI_CHECK_OVERFLOWS", "false"),
+    );
 
     run_verification_base(group_name, filter);
 }
 
 fn run_verification_overflow(group_name: &str, filter: &Option<String>) {
+    let _temporary_env_vars = (TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "false"),);
+
+    run_verification_base(group_name, filter);
+}
+
+// fn run_verification_safe_clients_silicon(group_name: &str, filter: &Option<String>) {
+//     let _temporary_env_vars = (
+//         TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "true"),
+//         TemporaryEnvVar::set("PRUSTI_VIPER_BACKEND", "silicon"),
+//     );
+//     run_verification_base(group_name, filter);
+// }
+
+fn run_verification_safe_clients_carbon(group_name: &str, filter: &Option<String>) {
+    let _temporary_env_vars = (
+        TemporaryEnvVar::set("PRUSTI_VIPER_BACKEND", "carbon"),
+    );
     run_verification_base(group_name, filter);
 }
 
 fn run_verification_core_proof(group_name: &str, filter: &Option<String>) {
     let _temporary_env_vars = (
+        TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "false"),
         TemporaryEnvVar::set("PRUSTI_CHECK_PANICS", "false"),
         TemporaryEnvVar::set("PRUSTI_CHECK_OVERFLOWS", "false"),
     );
@@ -152,6 +173,7 @@ fn run_verification_core_proof(group_name: &str, filter: &Option<String>) {
 
 fn run_lifetimes_dump(group_name: &str, filter: &Option<String>) {
     let _temporary_env_vars = (
+        TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "false"),
         TemporaryEnvVar::set("PRUSTI_NO_VERIFY", "true"),
         TemporaryEnvVar::set("PRUSTI_DUMP_BORROWCK_INFO", "true"),
         TemporaryEnvVar::set("PRUSTI_QUIET", "true"),
@@ -187,6 +209,17 @@ fn test_runner(_tests: &[&()]) {
     // Test the type-checking of specifications. This doesn't run the verifier.
     println!("[typecheck]");
     run_no_verification("typecheck", &filter);
+
+    // Test the verifier.
+    println!("[verify_safe_clients_carbon]");
+    run_verification_safe_clients_carbon("verify_safe_clients", &filter);
+    save_verification_cache();
+
+    // Test the verifier.
+    // TODO: Disabled until Silicon can report multiple verification errors.
+    // println!("[verify_safe_clients_silicon]");
+    // run_verification_safe_clients_silicon("verify_safe_clients", &filter);
+    // save_verification_cache();
 
     // Test the verifier.
     println!("[verify]");

@@ -113,6 +113,7 @@ lazy_static::lazy_static! {
         settings.set_default("intern_names", true).unwrap();
         settings.set_default("enable_purification_optimization", false).unwrap();
         // settings.set_default("enable_manual_axiomatization", false).unwrap();
+        settings.set_default("safe_clients_encoder", true).unwrap();
         settings.set_default("unsafe_core_proof", false).unwrap();
         settings.set_default("verify_core_proof", true).unwrap();
         settings.set_default("verify_specifications", true).unwrap();
@@ -126,6 +127,7 @@ lazy_static::lazy_static! {
         settings.set_default("use_new_encoder", true).unwrap();
         settings.set_default::<Option<u8>>("number_of_parallel_verifiers", None).unwrap();
         settings.set_default::<Option<String>>("min_prusti_version", None).unwrap();
+        settings.set_default("check_ghost", true).unwrap();
 
         settings.set_default("print_desugared_specs", false).unwrap();
         settings.set_default("print_typeckd_specs", false).unwrap();
@@ -862,6 +864,18 @@ pub fn unsafe_core_proof() -> bool {
     read_setting("unsafe_core_proof")
 }
 
+/// When enabled, the new encoder for safe clients is used.
+pub fn safe_clients_encoder() -> bool {
+    let enabled = read_setting("safe_clients_encoder");
+    if enabled {
+        assert!(
+            !unsafe_core_proof(),
+            "The unsafe core proof should be disabled to use the safe-clients encoder."
+        );
+    }
+    enabled
+}
+
 /// Whether the core proof (memory safety) should be verified.
 ///
 /// **Note:** This option is taken into account only when `unsafe_core_proof` is
@@ -1008,4 +1022,9 @@ pub fn cargo_command() -> String {
 /// `#[invariant(...)]` attribute.
 pub fn enable_type_invariants() -> bool {
     read_setting("enable_type_invariants")
+}
+
+/// When enabled, ghost functions are checked to never be called from executable code.
+pub fn check_ghost() -> bool {
+    read_setting("check_ghost")
 }

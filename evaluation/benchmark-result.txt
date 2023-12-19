@@ -1,0 +1,14 @@
+Reading evaluation/benchmark-result.json
+Benchmark results:
+ * 10.0	± 0.7	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/arc.rs
+ * 34.6	± 0.8	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/arc_rwlock.rs
+ * 5.5	± 0.1	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/atomic.rs
+ * 8.8	± 0.2	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/cell.rs
+ * 12.7	± 0.4	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/mutex.rs
+ * 15.8	± 0.9	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/rc.rs
+ * 13.5	± 0.8	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/refcell.rs
+ * 4.8	± 0.2	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/unsafecell.rs
+ * 5.5	± 0.1	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/box.rs
+ * 4.9	± 0.3	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/mutex_inv.rs
+ * 6.2	± 0.4	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/verus_cell.rs
+ * 10.3	± 0.5	seconds for prusti-tests/tests/verify_safe_clients/fail/clients/verus_ptr.rs

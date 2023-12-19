@@ -10,11 +10,11 @@ use crate::{
         DefinitelyAccessibleState, DefinitelyInitializedAnalysis, DefinitelyInitializedState,
         MaybeBorrowedAnalysis, MaybeBorrowedState,
     },
-    mir_utils::remove_place_from_set,
+    mir_utils::{is_prefix, remove_place_from_set},
     PointwiseState,
 };
 use prusti_rustc_interface::{
-    borrowck::BodyWithBorrowckFacts,
+    borrowck::consumers::{LocationTable, PoloniusInput, PoloniusOutput},
     data_structures::fx::{FxHashMap, FxHashSet},
     middle::{mir, ty::TyCtxt},
     span::def_id::DefId,
@@ -23,42 +23,34 @@ use prusti_rustc_interface::{
 pub struct DefinitelyAccessibleAnalysis<'mir, 'tcx: 'mir> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    body_with_facts: &'mir BodyWithBorrowckFacts<'tcx>,
+    body: &'mir mir::Body<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> DefinitelyAccessibleAnalysis<'mir, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        body_with_facts: &'mir BodyWithBorrowckFacts<'tcx>,
-    ) -> Self {
-        DefinitelyAccessibleAnalysis {
-            tcx,
-            def_id,
-            body_with_facts,
-        }
+    pub fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'mir mir::Body<'tcx>) -> Self {
+        DefinitelyAccessibleAnalysis { tcx, def_id, body }
     }
 
     pub fn run_analysis(
         &self,
+        input_facts: &PoloniusInput,
+        output_facts: &PoloniusOutput,
+        location_table: &LocationTable,
     ) -> AnalysisResult<PointwiseState<'mir, 'tcx, DefinitelyAccessibleState<'tcx>>> {
-        let body = &self.body_with_facts.body;
         let def_init_analysis =
-            DefinitelyInitializedAnalysis::new_relaxed(self.tcx, self.def_id, body);
-        let borrowed_analysis = MaybeBorrowedAnalysis::new(self.tcx, self.body_with_facts);
+            DefinitelyInitializedAnalysis::new_relaxed(self.tcx, self.def_id, self.body);
+        let borrowed_analysis = MaybeBorrowedAnalysis::new(self.tcx, self.body);
         let def_init = def_init_analysis.run_fwd_analysis()?;
-        let borrowed = borrowed_analysis.run_analysis()?;
-        let location_table = &self.body_with_facts.location_table;
-        let borrowck_out_facts = self.body_with_facts.output_facts.as_ref();
-        let var_live_on_entry: FxHashMap<_, _> = borrowck_out_facts
+        let borrowed = borrowed_analysis.run_analysis(input_facts, output_facts, location_table)?;
+        let var_live_on_entry: FxHashMap<_, _> = output_facts
             .var_live_on_entry
             .iter()
             .map(|(&point, live_vars)| (point, FxHashSet::from_iter(live_vars.iter().cloned())))
             .collect();
         let empty_locals_set: FxHashSet<mir::Local> = FxHashSet::default();
-        let mut analysis_state = PointwiseState::default(body);
+        let mut analysis_state = PointwiseState::default(self.body);
 
-        for (block, block_data) in body.basic_blocks.iter_enumerated() {
+        for (block, block_data) in self.body.basic_blocks.iter_enumerated() {
             // Initialize the state before each statement
             for statement_index in 0..=block_data.statements.len() {
                 let location = mir::Location {
@@ -119,21 +111,35 @@ impl<'mir, 'tcx: 'mir> DefinitelyAccessibleAnalysis<'mir, 'tcx> {
         borrowed: &MaybeBorrowedState<'tcx>,
         live_vars: &FxHashSet<mir::Local>,
     ) -> DefinitelyAccessibleState<'tcx> {
-        let body = &self.body_with_facts.body;
         let mut definitely_accessible: FxHashSet<_> = def_init.get_def_init_places().clone();
-        for (local, local_decl) in body.local_decls.iter_enumerated() {
+        for (local, local_decl) in self.body.local_decls.iter_enumerated() {
             let has_lifetimes = self.tcx.any_free_region_meets(&local_decl.ty, |_| true);
-            let maybe_expired = !live_vars.contains(&local);
-            if has_lifetimes && maybe_expired {
-                remove_place_from_set(body, self.tcx, local.into(), &mut definitely_accessible);
+            // The borrow checker expires loans as soon as the borrow is no longer used.
+            let maybe_expired = !live_vars.contains(&local)
+                && borrowed
+                    .get_maybe_shared_borrowed()
+                    .iter()
+                    .all(|&p| !is_prefix(p, local.into()));
+            // Reference-typed arguments cannot expire inside the function.
+            let cannot_expire = matches!(
+                self.body.local_kind(local),
+                mir::LocalKind::Arg | mir::LocalKind::ReturnPointer
+            );
+            if has_lifetimes && maybe_expired && !cannot_expire {
+                remove_place_from_set(
+                    self.body,
+                    self.tcx,
+                    local.into(),
+                    &mut definitely_accessible,
+                );
             }
         }
         for &place in borrowed.get_maybe_mut_borrowed().iter() {
-            remove_place_from_set(body, self.tcx, place, &mut definitely_accessible);
+            remove_place_from_set(self.body, self.tcx, place, &mut definitely_accessible);
         }
         let mut definitely_owned = definitely_accessible.clone();
         for &place in borrowed.get_maybe_shared_borrowed().iter() {
-            remove_place_from_set(body, self.tcx, place, &mut definitely_owned);
+            remove_place_from_set(self.body, self.tcx, place, &mut definitely_owned);
         }
         DefinitelyAccessibleState {
             definitely_accessible,

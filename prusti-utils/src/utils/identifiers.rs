@@ -16,4 +16,6 @@ pub fn encode_identifier(ident: String) -> String {
         .replace(' ', "$space$")
         .replace('&', "$amp$")
         .replace('*', "$star$")
+        .replace('\'', "$sngquote$")
+        .replace('"', "$dblquote$")
 }

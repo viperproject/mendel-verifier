@@ -89,6 +89,9 @@ pub(crate) trait SpecificationsInterface<'tcx> {
     /// `prusti::loop_body_invariant_spec` attribute.
     fn get_loop_specs(&self, def_id: DefId) -> Option<typed::LoopSpecification>;
 
+    /// Get the user-specified ownership of a type.
+    fn get_ownership_specs(&self, def_id: DefId) -> Vec<typed::OwnershipSpecification>;
+
     /// Get the specifications attached to the `def_id` type.
     fn get_type_specs(&self, def_id: DefId) -> Option<typed::TypeSpecification>;
 
@@ -132,7 +135,10 @@ impl<'v, 'tcx: 'v> SpecificationsInterface<'tcx> for super::super::super::Encode
         let kind = self.get_proc_kind(def_id, substs);
         let mut pure = matches!(
             kind,
-            ProcedureSpecificationKind::Pure | ProcedureSpecificationKind::Predicate(_)
+            ProcedureSpecificationKind::Pure
+                | ProcedureSpecificationKind::PureMemory
+                | ProcedureSpecificationKind::PureUnstable
+                | ProcedureSpecificationKind::Predicate(_)
         );
 
         let func_name = self.env().name.get_unique_item_name(def_id);
@@ -215,6 +221,19 @@ impl<'v, 'tcx: 'v> SpecificationsInterface<'tcx> for super::super::super::Encode
             .borrow()
             .get_loop_spec(&def_id)
             .cloned()
+    }
+
+    fn get_ownership_specs(&self, def_id: DefId) -> Vec<typed::OwnershipSpecification> {
+        if let Some(specs) = self
+            .specifications_state
+            .specs
+            .borrow()
+            .get_ownership_spec(&def_id)
+        {
+            specs.clone()
+        } else {
+            vec![]
+        }
     }
 
     fn get_type_specs(&self, def_id: DefId) -> Option<typed::TypeSpecification> {

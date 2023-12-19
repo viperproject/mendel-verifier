@@ -1,3 +1,4 @@
+/*
 use crate::*;
 
 #[extern_spec]
@@ -16,3 +17,4 @@ impl<T, E: ::core::fmt::Debug> ::core::result::Result<T, E> {
     #[requires(matches!(self, Ok(_)))]
     fn unwrap(self) -> T;
 }
+*/

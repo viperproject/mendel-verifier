@@ -1,0 +1,192 @@
+Analyzing file $DIR/mut_ref_arg.rs using FramingAnalysis...
+Result for function minus_plus_one():
+{
+  "bb0": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        },
+        "statement: _2 = CheckedSub((*_1), const 1_u32)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "(_2.0: u32)"
+      ],
+      "frame_locally_shared": [],
+      "frame_owned": [
+        "(_2.0: u32)"
+      ]
+    },
+    "terminator: assert(!move (_2.1: bool), /"attempt to compute `{} - {}`, which would overflow/", (*_1), const 1_u32) -> [success: bb1, unwind: bb3]",
+    {
+      "bb1": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb3": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb1": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "(_2.1: bool)"
+          ],
+          "frame_locally_shared": [],
+          "frame_owned": [
+            "(_2.1: bool)"
+          ]
+        },
+        "statement: (*_1) = move (_2.0: u32)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_2"
+          ],
+          "frame_locally_shared": [
+            "_2"
+          ],
+          "frame_owned": [
+            "_2"
+          ]
+        },
+        "statement: _3 = CheckedAdd((*_1), const 1_u32)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1",
+        "_2",
+        "(_3.0: u32)"
+      ],
+      "frame_locally_shared": [
+        "_2"
+      ],
+      "frame_owned": [
+        "_2",
+        "(_3.0: u32)"
+      ]
+    },
+    "terminator: assert(!move (_3.1: bool), /"attempt to compute `{} + {}`, which would overflow/", (*_1), const 1_u32) -> [success: bb2, unwind: bb3]",
+    {
+      "bb2": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb3": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb2": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_2",
+            "(_3.1: bool)"
+          ],
+          "frame_locally_shared": [
+            "_2"
+          ],
+          "frame_owned": [
+            "_2",
+            "(_3.1: bool)"
+          ]
+        },
+        "statement: (*_1) = move (_3.0: u32)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_2",
+            "_3"
+          ],
+          "frame_locally_shared": [
+            "_1",
+            "_2",
+            "_3"
+          ],
+          "frame_owned": [
+            "_1",
+            "_2",
+            "_3"
+          ]
+        },
+        "statement: _0 = const ()"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_0",
+        "_1",
+        "_2",
+        "_3"
+      ],
+      "frame_locally_shared": [
+        "_0",
+        "_1",
+        "_2",
+        "_3"
+      ],
+      "frame_owned": [
+        "_0",
+        "_1",
+        "_2",
+        "_3"
+      ]
+    },
+    "terminator: return",
+    {}
+  ],
+  "bb3": [
+    [],
+    "state before terminator:",
+    {
+      "frame_accessible": [],
+      "frame_locally_shared": [],
+      "frame_owned": []
+    },
+    "terminator: resume",
+    {}
+  ]
+}

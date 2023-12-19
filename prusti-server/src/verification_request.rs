@@ -50,6 +50,11 @@ impl ViperBackendConfig {
                     verifier_args.push("--numberOfParallelVerifiers".to_string());
                     verifier_args.push(number.to_string());
                 }
+                if config::safe_clients_encoder() {
+                    // Silicon goes from more than one hour to seconds with this option
+                    verifier_args.push("--proverSaturationTimeoutWeights".to_string());
+                    verifier_args.push("[0,0,0,0,0]".to_string());
+                }
 
                 verifier_args.extend(vec![
                     "--assertTimeout".to_string(),

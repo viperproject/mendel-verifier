@@ -1,0 +1,259 @@
+Analyzing file $DIR/cell.rs using FramingAnalysis...
+Result for function test():
+{
+  "bb0": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        },
+        "statement: StorageLive(_1)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [],
+      "frame_locally_shared": [],
+      "frame_owned": []
+    },
+    "terminator: _1 = std::cell::Cell::<i32>::new(const 123_i32) -> [return: bb1, unwind: bb3]",
+    {
+      "bb1": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb3": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb1": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": []
+        },
+        "statement: FakeRead(ForLet(None), _1)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
+        },
+        "statement: StorageLive(_2)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_1"
+      ],
+      "frame_locally_shared": [
+        "_1"
+      ],
+      "frame_owned": [
+        "_1"
+      ]
+    },
+    "terminator: _2 = std::cell::Cell::<i32>::new(const 456_i32) -> [return: bb2, unwind: bb3]",
+    {
+      "bb2": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ],
+      "bb3": [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        }
+      ]
+    }
+  ],
+  "bb2": [
+    [
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_2"
+          ],
+          "frame_locally_shared": [
+            "_1",
+            "_2"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
+        },
+        "statement: FakeRead(ForLet(None), _2)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1",
+            "_2"
+          ],
+          "frame_locally_shared": [
+            "_1",
+            "_2"
+          ],
+          "frame_owned": [
+            "_1",
+            "_2"
+          ]
+        },
+        "statement: StorageLive(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
+        },
+        "statement: _3 = move _2"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [],
+          "frame_locally_shared": [],
+          "frame_owned": []
+        },
+        "statement: _1 = move _3"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
+        },
+        "statement: StorageDead(_3)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_1"
+          ],
+          "frame_owned": [
+            "_1"
+          ]
+        },
+        "statement: _0 = const ()"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_0",
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_0",
+            "_1"
+          ],
+          "frame_owned": [
+            "_0",
+            "_1"
+          ]
+        },
+        "statement: StorageDead(_2)"
+      ],
+      [
+        "state:",
+        {
+          "frame_accessible": [
+            "_0",
+            "_1"
+          ],
+          "frame_locally_shared": [
+            "_0",
+            "_1"
+          ],
+          "frame_owned": [
+            "_0",
+            "_1"
+          ]
+        },
+        "statement: StorageDead(_1)"
+      ]
+    ],
+    "state before terminator:",
+    {
+      "frame_accessible": [
+        "_0"
+      ],
+      "frame_locally_shared": [
+        "_0"
+      ],
+      "frame_owned": [
+        "_0"
+      ]
+    },
+    "terminator: return",
+    {}
+  ],
+  "bb3": [
+    [],
+    "state before terminator:",
+    {
+      "frame_accessible": [],
+      "frame_locally_shared": [],
+      "frame_owned": []
+    },
+    "terminator: resume",
+    {}
+  ]
+}

@@ -68,6 +68,7 @@ fn test_prusti_rustc_caching_hash() {
             .env("RUST_BACKTRACE", "1")
             .env("PRUSTI_DUMP_VIPER_PROGRAM", "true")
             .env("PRUSTI_PRINT_HASH", "true")
+            .env("PRUSTI_SAFE_CLIENTS_ENCODER", "false")
             .output()
             .expect("failed to execute prusti-rustc");
         assert!(out.status.success(), "Failed to compile: {:?}\n{}", program, String::from_utf8(out.stderr).unwrap());

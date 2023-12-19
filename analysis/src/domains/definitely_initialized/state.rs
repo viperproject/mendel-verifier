@@ -94,6 +94,21 @@ impl<'mir, 'tcx: 'mir> DefinitelyInitializedState<'mir, 'tcx> {
         }
     }
 
+    /// The bottom element of the lattice contains all local variables, meaning that everything is
+    /// surely initialized.
+    pub fn new_bottom(def_id: DefId, mir: &'mir mir::Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+        let mut def_init_places = FxHashSet::default();
+        for local in mir.local_decls.indices() {
+            def_init_places.insert(local.into());
+        }
+        DefinitelyInitializedState {
+            def_init_places,
+            def_id,
+            mir,
+            tcx,
+        }
+    }
+
     pub fn is_top(&self) -> bool {
         self.def_init_places.is_empty()
     }

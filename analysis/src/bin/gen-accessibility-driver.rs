@@ -175,18 +175,18 @@ impl prusti_rustc_interface::driver::Callbacks for OurCompilerCalls {
             // Generate and print the programs with the additional statements to check accessibility.
             for (num, (local_def_id, body_with_facts)) in def_ids_with_body.iter().enumerate() {
                 assert!(!body_with_facts.input_facts.cfg_edge.is_empty());
+                let def_id = local_def_id.to_def_id();
                 let body = &body_with_facts.body;
+                let input_facts = &body_with_facts.input_facts;
+                let output_facts = body_with_facts.output_facts.as_ref();
+                let location_table = &body_with_facts.location_table;
 
                 if num > 0 {
                     println!("\n/* NEW PROGRAM */\n");
                 }
 
-                let analyzer = DefinitelyAccessibleAnalysis::new(
-                    tcx,
-                    local_def_id.to_def_id(),
-                    body_with_facts,
-                );
-                match analyzer.run_analysis() {
+                let analyzer = DefinitelyAccessibleAnalysis::new(tcx, def_id, body);
+                match analyzer.run_analysis(input_facts, output_facts, location_table) {
                     Ok(state) => {
                         println!(
                             "{}",

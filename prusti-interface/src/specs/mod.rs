@@ -38,6 +38,8 @@ use prusti_specs::specifications::common::SpecificationId;
 struct ProcedureSpecRefs {
     spec_id_refs: Vec<SpecIdRef>,
     pure: bool,
+    pure_unstable: bool,
+    pure_memory: bool,
     abstract_predicate: bool,
     trusted: bool,
 }
@@ -48,10 +50,23 @@ impl From<&ProcedureSpecRefs> for ProcedureSpecificationKind {
             ProcedureSpecificationKind::Predicate(None)
         } else if refs.pure {
             ProcedureSpecificationKind::Pure
+        } else if refs.pure_unstable {
+            ProcedureSpecificationKind::PureUnstable
+        } else if refs.pure_memory {
+            ProcedureSpecificationKind::PureMemory
         } else {
             ProcedureSpecificationKind::Impure
         }
     }
+}
+
+#[derive(Debug)]
+struct OwnershipSpecRefs {
+    pub self_ownership: String,
+    pub condition: Option<SpecificationId>,
+    pub target_ownership: String,
+    pub target: SpecificationId,
+    pub target_parent: SpecificationId,
 }
 
 #[derive(Debug, Default)]
@@ -77,6 +92,7 @@ pub struct SpecCollector<'a, 'tcx> {
     procedure_specs: HashMap<LocalDefId, ProcedureSpecRefs>,
     loop_specs: Vec<LocalDefId>,
     loop_variants: Vec<LocalDefId>,
+    ownership_specs: HashMap<DefId, Vec<OwnershipSpecRefs>>,
     type_specs: HashMap<LocalDefId, TypeSpecRefs>,
     prusti_assertions: Vec<LocalDefId>,
     prusti_assumptions: Vec<LocalDefId>,
@@ -93,6 +109,7 @@ impl<'a, 'tcx> SpecCollector<'a, 'tcx> {
             procedure_specs: HashMap::new(),
             loop_specs: vec![],
             loop_variants: vec![],
+            ownership_specs: HashMap::new(),
             type_specs: HashMap::new(),
             prusti_assertions: vec![],
             prusti_assumptions: vec![],
@@ -106,6 +123,7 @@ impl<'a, 'tcx> SpecCollector<'a, 'tcx> {
         self.determine_procedure_specs(&mut def_spec);
         self.determine_extern_specs(&mut def_spec);
         self.determine_loop_specs(&mut def_spec);
+        self.determine_ownership_specs(&mut def_spec);
         self.determine_type_specs(&mut def_spec);
         self.determine_prusti_assertions(&mut def_spec);
         self.determine_prusti_assumptions(&mut def_spec);
@@ -216,6 +234,53 @@ impl<'a, 'tcx> SpecCollector<'a, 'tcx> {
         }
     }
 
+    fn determine_ownership_specs(&self, def_spec: &mut typed::DefSpecificationMap) {
+        for (&def_id, type_refs) in self.ownership_specs.iter() {
+            for refs in type_refs {
+                if !prusti_common::config::safe_clients_encoder() {
+                    let span = self.env.query.get_def_span(def_id);
+                    PrustiError::unsupported(
+                        "ownership annotations are only supported in the version-based encoder",
+                        MultiSpan::from(span),
+                    )
+                    .emit(&self.env.diagnostic);
+                }
+                let self_ownership = typed::OwnershipKind::try_from(refs.self_ownership.as_str())
+                    .unwrap_or_else(|_| {
+                        panic!(
+                            "Invalid self_ownership {:?} on {def_id:?}",
+                            refs.self_ownership
+                        )
+                    });
+                let target_ownership = typed::OwnershipKind::try_from(
+                    refs.target_ownership.as_str(),
+                )
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "Invalid target_ownership {:?} on {def_id:?}",
+                        refs.target_ownership
+                    )
+                });
+                let condition = refs
+                    .condition
+                    .as_ref()
+                    .map(|spec_id| *self.spec_functions.get(spec_id).unwrap());
+                let target = *self.spec_functions.get(&refs.target).unwrap();
+                let target_parent = *self.spec_functions.get(&refs.target_parent).unwrap();
+                def_spec.ownership_specs.entry(def_id).or_default().push(
+                    typed::OwnershipSpecification {
+                        source: def_id,
+                        self_ownership,
+                        condition,
+                        target_ownership,
+                        target,
+                        target_parent,
+                    },
+                );
+            }
+        }
+    }
+
     fn determine_type_specs(&self, def_spec: &mut typed::DefSpecificationMap) {
         for (type_id, refs) in self.type_specs.iter() {
             if !refs.invariants.is_empty() && !prusti_common::config::enable_type_invariants() {
@@ -292,6 +357,14 @@ impl<'a, 'tcx> SpecCollector<'a, 'tcx> {
         for def_id in predicates {
             self.env.body.load_predicate_body(def_id.expect_local());
         }
+        // TODO(fpoli): Add these to defid_for_export?
+        for ownership in def_spec.ownership_specs.values().flat_map(|x| x.iter()) {
+            self.env.body.load_spec_body(ownership.target);
+            self.env.body.load_spec_body(ownership.target_parent);
+            if let Some(condition) = ownership.condition {
+                self.env.body.load_spec_body(condition);
+            }
+        }
     }
 }
 
@@ -364,13 +437,23 @@ fn get_procedure_spec_ids(def_id: DefId, attrs: &[ast::Attribute]) -> Option<Pro
     );
 
     let pure = has_prusti_attr(attrs, "pure");
+    let pure_unstable = has_prusti_attr(attrs, "pure_unstable");
+    let pure_memory = has_prusti_attr(attrs, "pure_memory");
     let trusted = has_prusti_attr(attrs, "trusted");
     let abstract_predicate = has_abstract_predicate_attr(attrs);
 
-    if abstract_predicate || pure || trusted || !spec_id_refs.is_empty() {
+    if abstract_predicate
+        || pure
+        || pure_unstable
+        || pure_memory
+        || trusted
+        || !spec_id_refs.is_empty()
+    {
         Some(ProcedureSpecRefs {
             spec_id_refs,
             pure,
+            pure_unstable,
+            pure_memory,
             abstract_predicate,
             trusted,
         })
@@ -442,6 +525,41 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for SpecCollector<'a, 'tcx> {
                     .or_default()
                     .invariants
                     .push(local_id);
+            }
+
+            // Collect ownership specifications
+            if has_prusti_attr(attrs, "ownership_spec") {
+                let self_id = fn_decl.inputs[0].hir_id;
+                let Some(self_ownership) = read_prusti_attr("self_ownership", attrs) else {
+                    panic!("Missing self_ownership attribute on ownership_spec item {def_id:?}");
+                };
+                let Some(raw_target_parent_spec_id) = read_prusti_attr("target_parent_spec_id", attrs) else {
+                    panic!("Missing target_parent_spec_id attribute on ownership_spec item {def_id:?}");
+                };
+                let target_parent_spec_id = parse_spec_id(raw_target_parent_spec_id, def_id);
+                let condition_spec_id = read_prusti_attr("condition_spec_id", attrs);
+                let Some(target_ownership) = read_prusti_attr("target_ownership", attrs) else {
+                    panic!("Missing target_ownership attribute on ownership_spec item {def_id:?}");
+                };
+
+                let type_id = self
+                    .env
+                    .query
+                    .hir()
+                    .find(self_id)
+                    .and_then(get_type_id_from_ty_node)
+                    .expect("failed to find the type id of an ownership_spec");
+
+                self.ownership_specs
+                    .entry(type_id)
+                    .or_default()
+                    .push(OwnershipSpecRefs {
+                        target_parent: target_parent_spec_id,
+                        self_ownership,
+                        condition: condition_spec_id.map(|x| parse_spec_id(x, def_id)),
+                        target_ownership,
+                        target: spec_id,
+                    });
             }
 
             // Collect trusted type flag

@@ -3,11 +3,5 @@ error: [Prusti: verification error] precondition might not hold.
   |
 6 |     requires_large_number(10);
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-  |
-note: the failing assertion is here
- --> src/utils.rs:3:12
-  |
-3 | #[requires(x > 999)]
-  |            ^^^^^^^
 
 error: could not compile `failing_crate` due to previous error

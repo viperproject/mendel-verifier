@@ -5,7 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{
-    mir_utils::{is_prefix, Place},
+    mir_utils::{is_prefix, remove_place_from_set, Place},
     PointwiseState,
 };
 use log::info;
@@ -34,6 +34,20 @@ impl<'tcx> DefinitelyAccessibleState<'tcx> {
 
     pub fn get_definitely_owned(&self) -> &FxHashSet<Place<'tcx>> {
         &self.definitely_owned
+    }
+
+    /// Get the places of `definitely_accessible` that are not in `definitely_owned`.
+    pub fn get_definitely_accessible_only(
+        &self,
+        body: &mir::Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> FxHashSet<Place<'tcx>> {
+        // TODO: This can be cached
+        let mut result = self.definitely_accessible.clone();
+        for &place in &self.definitely_owned {
+            remove_place_from_set(body, tcx, place, &mut result);
+        }
+        result
     }
 
     pub fn check_invariant(&self, location: impl fmt::Debug) {

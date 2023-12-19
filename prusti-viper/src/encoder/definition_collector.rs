@@ -4,7 +4,7 @@ use super::{
     Encoder,
 };
 use crate::encoder::high::types::HighTypeEncoderInterface;
-use prusti_common::vir_local;
+use prusti_common::{config, vir_local};
 use prusti_rustc_interface::span::Span;
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -42,8 +42,6 @@ pub(super) fn collect_definitions(
         unfolded_predicates: Default::default(),
     };
     vir::utils::walk_methods(&methods, &mut unfolded_predicate_collector);
-    // Keep all domains around. An alternative is to make the collector walk over domain axioms.
-    let used_builtin_domains = encoder.get_encoded_builtin_domains().into_iter().collect();
     let mut collector = Collector {
         error_span,
         encoder,
@@ -53,7 +51,7 @@ pub(super) fn collect_definitions(
         used_predicates: Default::default(),
         used_fields: Default::default(),
         used_domains: Default::default(),
-        used_builtin_domains,
+        used_builtin_domains: Default::default(),
         used_snap_domain_functions: Default::default(),
         used_functions: Default::default(),
         checked_function_contracts: Default::default(),
@@ -63,6 +61,8 @@ pub(super) fn collect_definitions(
         in_directly_calling_state: true,
     };
     collector.walk_methods(&methods)?;
+    // Keep all domains. An alternative is to make the collector walk over domain axioms.
+    collector.used_builtin_domains = encoder.get_encoded_builtin_domains().into_iter().collect();
     collector.into_program(name, methods)
 }
 
@@ -193,10 +193,12 @@ impl<'p, 'v: 'p, 'tcx: 'v> Collector<'p, 'v, 'tcx> {
             };
             predicates.push(predicate);
         }
-        predicates.push(vir::Predicate::Bodyless(
-            vir::Type::typed_ref("DeadBorrowToken$"),
-            vir_local! { borrow: Int },
-        ));
+        if !config::safe_clients_encoder() {
+            predicates.push(vir::Predicate::Bodyless(
+                vir::Type::typed_ref("DeadBorrowToken$"),
+                vir_local! { borrow: Int },
+            ));
+        }
         predicates.sort_by_key(|f| f.get_identifier());
         Ok(predicates)
     }
@@ -216,7 +218,7 @@ impl<'p, 'v: 'p, 'tcx: 'v> Collector<'p, 'v, 'tcx> {
                     function.body = None;
                 }
             }
-            if self.method_names.contains(&function.name) {
+            if self.method_names.contains(&function.name) && !config::safe_clients_encoder() {
                 return Err(SpannedEncodingError::internal(
                     format!(
                         "Rust function {} encoded both as a Viper method and function",
@@ -992,7 +994,9 @@ impl<'p, 'v: 'p, 'tcx: 'v> FallibleExprWalker for Collector<'p, 'v, 'tcx> {
                         .insert(domain_function.domain_name.clone());
                 }
                 name => {
-                    unreachable!("Unexpected domain: {}", name);
+                    if !config::safe_clients_encoder() {
+                        unreachable!("Unexpected domain: {}", name);
+                    }
                 }
             }
         }
@@ -1014,7 +1018,7 @@ impl<'p, 'v: 'p, 'tcx: 'v> FallibleExprWalker for Collector<'p, 'v, 'tcx> {
             }
             vir::Type::Domain(..) => {
                 let name = typ.name();
-                if name != "UnitDomain" {
+                if name != "UnitDomain" && !config::safe_clients_encoder() {
                     unreachable!("Unexpected type that is not snapshot: {}", name);
                 }
             }

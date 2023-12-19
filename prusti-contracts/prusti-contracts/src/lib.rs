@@ -15,8 +15,20 @@ pub use prusti_contracts_proc_macros::assert_on_expiry;
 /// A macro for marking a function as pure.
 pub use prusti_contracts_proc_macros::pure;
 
+/// A macro for marking a function as pure unstable.
+pub use prusti_contracts_proc_macros::pure_unstable;
+
+/// A macro for marking a function as pure memory.
+pub use prusti_contracts_proc_macros::pure_memory;
+
+/// A macro for marking a function as ghost.
+pub use prusti_contracts_proc_macros::ghost_fn;
+
 /// A macro for marking a function as trusted.
 pub use prusti_contracts_proc_macros::trusted;
+
+/// A macro for specifying capabilities.
+pub use prusti_contracts_proc_macros::capable;
 
 /// A macro for type invariants.
 pub use prusti_contracts_proc_macros::invariant;
@@ -281,6 +293,10 @@ mod private {
         pub fn new(_: T) -> Self {
             panic!()
         }
+
+        pub fn unknown() -> Self {
+            panic!()
+        }
     }
 
     impl<T> Deref for Ghost<T> {
@@ -329,6 +345,11 @@ pub fn snap<T>(_x: &T) -> T {
     unimplemented!()
 }
 
+/// Check that the encoding of the argument is a memory snapshot.
+pub fn check_mem<T>(_x: T) -> T {
+    unimplemented!()
+}
+
 /// Snapshot, "logical", or "mathematical" equality. Compares the in-memory
 /// representation of two instances of the same type, even if there is no
 /// `PartialEq` nor `Copy` implementation. The in-memory representation is
@@ -336,6 +357,60 @@ pub fn snap<T>(_x: &T) -> T {
 /// are not. Importantly, addresses are not taken into consideration.
 pub fn snapshot_equality<T>(_l: T, _r: T) -> bool {
     true
+}
+
+/// Equality between two memory snapshots
+pub fn memory_snapshot_equality<T>(_l: T, _r: T) -> bool {
+    true
+}
+
+/// Identifier of an instance at a memory address
+#[trusted]
+#[ghost_fn]
+#[pure_unstable]
+pub fn deref_id<T>(_x: *const T) -> isize {
+    unimplemented!()
+}
+
+/// Two-state move relation between addresses. This function returns true iff in the old context
+/// the instance at address `old_addr` has been moved to the address `new_addr` in the current
+/// context.
+#[trusted]
+#[ghost_fn]
+#[pure_unstable]
+// #[two_state]
+pub fn moved<T>(old_addr: *const T, new_addr: *const T) -> bool {
+    let _ = old_addr;
+    let _ = new_addr;
+    unimplemented!()
+}
+
+/// True if the instance pointed by the argument has a "local" capability.
+#[trusted]
+#[ghost_fn]
+#[pure_unstable]
+pub fn local_capability<T>(addr: *const T) -> bool {
+    let _ = addr;
+    unimplemented!()
+}
+
+/// True if the instance pointed by the argument has a "localRef" capability.
+#[allow(non_snake_case)]
+#[trusted]
+#[ghost_fn]
+#[pure_unstable]
+pub fn localRef_capability<T>(addr: *const T) -> bool {
+    let _ = addr;
+    unimplemented!()
+}
+
+/// True if the instance pointed by the argument has a "unique" capability.
+#[trusted]
+#[ghost_fn]
+#[pure_unstable]
+pub fn unique_capability<T>(addr: *const T) -> bool {
+    let _ = addr;
+    unimplemented!()
 }
 
 pub use private::*;

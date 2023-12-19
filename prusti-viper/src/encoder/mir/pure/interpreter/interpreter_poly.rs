@@ -107,7 +107,7 @@ impl<'p, 'v: 'p, 'tcx: 'v> PureFunctionBackwardInterpreter<'p, 'v, 'tcx> {
         &self.mir_encoder
     }
 
-    fn encode_place(
+    pub(crate) fn encode_place(
         &self,
         place: mir::Place<'tcx>,
     ) -> EncodingResult<(vir::Expr, ty::Ty<'tcx>, Option<usize>)> {
@@ -580,6 +580,7 @@ impl<'p, 'v: 'p, 'tcx: 'v> BackwardMirInterpreter<'tcx>
                             | "prusti_contracts::specification_entailment"
                             | "prusti_contracts::call_description"
                             | "prusti_contracts::snap"
+                            | "prusti_contracts::check_mem"
                             | "prusti_contracts::snapshot_equality" => {
                                 let expr = self.encoder.encode_prusti_operation(
                                     full_func_proc_name,

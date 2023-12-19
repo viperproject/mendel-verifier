@@ -57,16 +57,7 @@ impl<'mir, 'tcx: 'mir> FixpointEngine<'mir, 'tcx> for DefinitelyInitializedAnaly
     /// The bottom element of the lattice contains all possible places,
     /// meaning all locals (which includes all their fields)
     fn new_bottom(&self) -> Self::State {
-        let mut places = FxHashSet::default();
-        for local in self.mir.local_decls.indices() {
-            places.insert(local.into());
-        }
-        DefinitelyInitializedState {
-            def_init_places: places,
-            def_id: self.def_id,
-            mir: self.mir,
-            tcx: self.tcx,
-        }
+        DefinitelyInitializedState::new_bottom(self.def_id, self.mir, self.tcx)
     }
 
     fn new_initial(&self) -> Self::State {

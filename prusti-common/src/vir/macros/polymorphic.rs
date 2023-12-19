@@ -22,6 +22,9 @@ macro_rules! vir_local {
             typ: $crate::vir_type!($type),
         }
     };
+    ([ $e: expr ]) => {
+        $e.clone()
+    };
 }
 
 #[macro_export]
@@ -92,6 +95,9 @@ macro_rules! vir_expr {
         })
     };
 
+    (! $expr: tt) => {
+        $crate::vir::polymorphic_vir::Expr::not(vir_expr!($expr))
+    };
     ($lhs: tt == $rhs: tt) => {
         $crate::vir::polymorphic_vir::Expr::eq_cmp(vir_expr!($lhs), vir_expr!($rhs))
     };
@@ -143,6 +149,42 @@ macro_rules! vir_expr {
     (forall $($name: ident : $type: tt),+ :: $({ $($triggers: tt),+ })+ :: $body: tt) => {
         $crate::vir::polymorphic_vir::Expr::forall(
             vec![$($crate::vir_local!($name: $type)),+],
+            vec![
+                $($crate::vir::polymorphic_vir::Trigger::new(vec![
+                    $(vir_expr!($triggers)),+
+                ])),*
+            ],
+            vir_expr!($body),
+        )
+    };
+
+    (forall $([$vars: expr]),+ :: $({ $($triggers: tt),+ })+ :: $body: tt) => {
+        $crate::vir::polymorphic_vir::Expr::forall(
+            vec![$($vars.clone()),+],
+            vec![
+                $($crate::vir::polymorphic_vir::Trigger::new(vec![
+                    $(vir_expr!($triggers)),+
+                ])),*
+            ],
+            vir_expr!($body),
+        )
+    };
+
+    (exists $($name: ident : $type: tt),+ :: $({ $($triggers: tt),+ })+ :: $body: tt) => {
+        $crate::vir::polymorphic_vir::Expr::exists(
+            vec![$($crate::vir_local!($name: $type)),+],
+            vec![
+                $($crate::vir::polymorphic_vir::Trigger::new(vec![
+                    $(vir_expr!($triggers)),+
+                ])),*
+            ],
+            vir_expr!($body),
+        )
+    };
+
+    (exists $([$vars: expr]),+ :: $({ $($triggers: tt),+ })+ :: $body: tt) => {
+        $crate::vir::polymorphic_vir::Expr::exists(
+            vec![$($vars.clone()),+],
             vec![
                 $($crate::vir::polymorphic_vir::Trigger::new(vec![
                     $(vir_expr!($triggers)),+

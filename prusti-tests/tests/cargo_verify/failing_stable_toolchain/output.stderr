@@ -11,11 +11,5 @@ error: [Prusti: verification error] precondition might not hold.
   |
 9 |     test(1, 0);
   |     ^^^^^^^^^^
-  |
-note: the failing assertion is here
- --> src/main.rs:3:12
-  |
-3 | #[requires(x > 123)]
-  |            ^^^^^^^
 
 error: could not compile `failing_stable_toolchain` due to previous error; 1 warning emitted

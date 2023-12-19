@@ -13,6 +13,7 @@ use crate::encoder::errors::{ErrorManager, SpannedEncodingError, EncodingError};
 use crate::encoder::foldunfold;
 use crate::encoder::procedure_encoder::ProcedureEncoder;
 use crate::error_unsupported;
+use crate::encoder::safe_clients::procedure_encoder::VersionBasedProcedureEncoder;
 use prusti_common::{vir_expr, vir_local};
 use prusti_common::config;
 use prusti_common::report::log;
@@ -25,6 +26,7 @@ use vir_crate::common::identifier::WithIdentifier;
 use prusti_rustc_interface::hir::def_id::DefId;
 use prusti_rustc_interface::middle::mir;
 use prusti_rustc_interface::middle::ty;
+use prusti_rustc_interface::span;
 use std::cell::{Cell, RefCell, RefMut, Ref};
 use rustc_hash::{FxHashSet, FxHashMap};
 use std::io::Write;
@@ -69,8 +71,8 @@ pub struct Encoder<'v, 'tcx: 'v> {
     error_manager: RefCell<ErrorManager<'tcx>>,
     /// A map containing all functions: identifier → function definition.
     functions: RefCell<FxHashMap<vir::FunctionIdentifier, Rc<vir::Function>>>,
-    builtin_domains: RefCell<FxHashMap<BuiltinDomainKind, vir::Domain>>,
-    builtin_domains_in_progress: RefCell<FxHashSet<BuiltinDomainKind>>,
+    builtin_domains: RefCell<FxHashMap<String, Rc<vir::Domain>>>,
+    builtin_domains_in_progress: RefCell<FxHashSet<String>>,
     builtin_methods: RefCell<FxHashMap<BuiltinMethodKind, vir::BodylessMethod>>,
     pub(super) high_builtin_function_encoder_state: HighBuiltinFunctionEncoderState,
     procedures: RefCell<FxHashMap<ProcedureDefId, vir::CfgMethod>>,
@@ -216,9 +218,9 @@ impl<'v, 'tcx> Encoder<'v, 'tcx> {
 
     fn initialize(&mut self) -> EncodingResult<()> {
         // These are used in optimization passes
-        self.encode_builtin_method_def(BuiltinMethodKind::HavocBool)?;
-        self.encode_builtin_method_def(BuiltinMethodKind::HavocInt)?;
-        self.encode_builtin_method_def(BuiltinMethodKind::HavocRef)?;
+        self.encode_builtin_method_def(&BuiltinMethodKind::Havoc(vir::Type::Bool))?;
+        self.encode_builtin_method_def(&BuiltinMethodKind::Havoc(vir::Type::Int))?;
+        self.encode_builtin_method_def(&BuiltinMethodKind::Havoc(vir::Type::Ref))?;
         Ok(())
     }
 
@@ -269,12 +271,23 @@ impl<'v, 'tcx> Encoder<'v, 'tcx> {
     }
 
     pub(super) fn get_encoded_builtin_domains(&self) -> Vec<vir::Domain> {
-        self.builtin_domains.borrow().values().cloned().collect()
+        self.builtin_domains.borrow().values().map(|d| d.as_ref().clone()).collect()
     }
 
     pub(super) fn insert_function(&self, function: vir::Function) -> vir::FunctionIdentifier {
         let identifier: vir::FunctionIdentifier = function.get_identifier().into();
-        assert!(self.functions.borrow_mut().insert(identifier.clone(), Rc::new(function)).is_none(), "{identifier:?} is not unique");
+        let new_fn_debug = format!("{function:?}");
+        let opt_old_fn = self.functions.borrow_mut().insert(identifier.clone(), Rc::new(function));
+        // Hack: compare the definitions by string. It's ugly, but it's good enough.
+        // This is probably needed due to lifetime elision.
+        if let Some(old_fn) = opt_old_fn {
+            let old_fn_debug = format!("{old_fn:?}");
+            assert_eq!(
+                new_fn_debug, old_fn_debug,
+                "Function {identifier:?} is not unique. \
+                Definitions:\n{new_fn_debug:?}\n{old_fn_debug:?}"
+            );
+        }
         identifier
     }
 
@@ -286,7 +299,10 @@ impl<'v, 'tcx> Encoder<'v, 'tcx> {
         } else if self.contains_snapshot_function(identifier) {
             Ok(self.get_snapshot_function(identifier))
         } else {
-            unreachable!("Not found function: {:?}", identifier)
+            unreachable!(
+                "Not found function: {identifier:?}. Available non-snapshot functions: {:?}",
+                self.functions.borrow().keys().collect::<Vec<_>>(),
+            )
         }
     }
 
@@ -422,47 +438,52 @@ impl<'v, 'tcx> Encoder<'v, 'tcx> {
         }))
     }
 
-    pub fn encode_builtin_domain(&self, domain_kind: BuiltinDomainKind) -> EncodingResult<vir::Domain> {
+    pub fn is_encoding_builtin_domain(&self, domain_kind: BuiltinDomainKind<'tcx>) -> EncodingResult<bool> {
+        trace!("is_encoding_builtin_domain({:?})", domain_kind);
+        let builtin_encoder = BuiltinEncoder::new(self);
+        let domain_name = builtin_encoder.encode_builtin_domain_name(domain_kind)?;
+        Ok(self.builtin_domains_in_progress.borrow().contains(&domain_name))
+    }
+
+    pub fn encode_builtin_domain(&self, domain_kind: BuiltinDomainKind<'tcx>) -> EncodingResult<Rc<vir::Domain>> {
         trace!("encode_builtin_domain({:?})", domain_kind);
-        if !self.builtin_domains.borrow().contains_key(&domain_kind) {
-            let builtin_encoder = BuiltinEncoder::new(self);
+        let builtin_encoder = BuiltinEncoder::new(self);
+        let domain_name = builtin_encoder.encode_builtin_domain_name(domain_kind)?;
+        if !self.builtin_domains.borrow().contains_key(&domain_name) {
+            self.builtin_domains_in_progress.borrow_mut().insert(domain_name.clone());
             let domain = builtin_encoder.encode_builtin_domain(domain_kind)?;
             self.builtin_domains
                 .borrow_mut()
-                .insert(domain_kind, domain);
+                .insert(domain_name.clone(), Rc::new(domain));
+            self.builtin_domains_in_progress.borrow_mut().remove(&domain_name);
         }
-        Ok(self.builtin_domains.borrow()[&domain_kind].clone())
+        Ok(self.builtin_domains.borrow()[&domain_name].clone())
     }
 
-    pub fn encode_builtin_domain_type(&self, domain_kind: BuiltinDomainKind) -> EncodingResult<vir::Type> {
+    pub fn encode_builtin_domain_type(&self, domain_kind: BuiltinDomainKind<'tcx>) -> EncodingResult<vir::Type> {
         trace!("encode_builtin_domain_type({:?})", domain_kind);
         // Also encode the definition, if it's not already under construction.
-        let mut domains_in_progress = self.builtin_domains_in_progress.borrow_mut();
-        if !domains_in_progress.contains(&domain_kind) {
-            domains_in_progress.insert(domain_kind);
-            drop(domains_in_progress);
+        if !self.is_encoding_builtin_domain(domain_kind)? {
             self.encode_builtin_domain(domain_kind)?;
-            domains_in_progress = self.builtin_domains_in_progress.borrow_mut();
-            domains_in_progress.remove(&domain_kind);
         }
         let builtin_encoder = BuiltinEncoder::new(self);
         builtin_encoder.encode_builtin_domain_type(domain_kind)
     }
 
-    pub fn encode_builtin_method_def(&self, method_kind: BuiltinMethodKind) -> EncodingResult<vir::BodylessMethod> {
+    pub fn encode_builtin_method_def(&self, method_kind: &BuiltinMethodKind) -> EncodingResult<vir::BodylessMethod> {
         trace!("encode_builtin_method_def({:?})", method_kind);
-        if !self.builtin_methods.borrow().contains_key(&method_kind) {
+        if !self.builtin_methods.borrow().contains_key(method_kind) {
             let builtin_encoder = BuiltinEncoder::new(self);
             let method = builtin_encoder.encode_builtin_method_def(method_kind)?;
             self.log_vir_program_before_viper(method.to_string());
             self.builtin_methods
                 .borrow_mut()
-                .insert(method_kind, method);
+                .insert(method_kind.clone(), method);
         }
-        Ok(self.builtin_methods.borrow()[&method_kind].clone())
+        Ok(self.builtin_methods.borrow()[method_kind].clone())
     }
 
-    pub fn encode_builtin_method_use(&self, method_kind: BuiltinMethodKind) -> EncodingResult<String> {
+    pub fn encode_builtin_method_use(&self, method_kind: &BuiltinMethodKind) -> EncodingResult<String> {
         trace!("encode_builtin_method_use({:?})", method_kind);
         // Trigger encoding of definition
         self.encode_builtin_method_def(method_kind)?;
@@ -555,8 +576,14 @@ impl<'v, 'tcx> Encoder<'v, 'tcx> {
         );
         if !self.procedures.borrow().contains_key(&def_id) {
             let procedure = self.env.get_procedure(def_id);
-            let proc_encoder = ProcedureEncoder::new(self, &procedure)?;
-            let mut method = match proc_encoder.encode() {
+            let encoding_result = if config::safe_clients_encoder() {
+                let proc_encoder = VersionBasedProcedureEncoder::new(self, &procedure)?;
+                proc_encoder.encode()
+            } else {
+                let proc_encoder = ProcedureEncoder::new(self, &procedure)?;
+                proc_encoder.encode()
+            };
+            let mut method = match encoding_result {
                 Ok(result) => result,
                 Err(error) => {
                     self.register_encoding_error(error);
@@ -773,11 +800,13 @@ impl<'v, 'tcx> Encoder<'v, 'tcx> {
                             );
                         },
                         ProcedureSpecificationKind::Pure |
+                        ProcedureSpecificationKind::PureUnstable |
+                        ProcedureSpecificationKind::PureMemory |
                         ProcedureSpecificationKind::Impure => {
                             if let Err(error) = self.encode_procedure(proc_def_id) {
                                 self.register_encoding_error(error);
                                 debug!("Error encoding function: {:?}", proc_def_id);
-                            } else {
+                            } else if !config::safe_clients_encoder() {
                                 match self.finalize_viper_program(proc_name, proc_def_id) {
                                     Ok(program) => self.programs.push(program),
                                     Err(error) => {
@@ -788,7 +817,6 @@ impl<'v, 'tcx> Encoder<'v, 'tcx> {
                             }
                         }
                     }
-
                 }
                 EncodingTask::Type { ty } => {
                     if config::unsafe_core_proof() && config::verify_core_proof() && config::verify_types() {
@@ -797,6 +825,19 @@ impl<'v, 'tcx> Encoder<'v, 'tcx> {
                             debug!("Error encoding type: {:?} {}", ty, CheckMode::CoreProof);
                         }
                     }
+                }
+            }
+        }
+        if config::safe_clients_encoder() {
+            let crate_name = self.env().name.local_crate_name();
+            let collected_program = super::definition_collector::collect_definitions(
+                span::DUMMY_SP, self, crate_name, self.get_used_viper_methods(),
+            );
+            match collected_program {
+                Ok(program) => self.programs.push(program),
+                Err(error) => {
+                    debug!("Error finalizing program: {error:?}");
+                    self.register_encoding_error(error);
                 }
             }
         }

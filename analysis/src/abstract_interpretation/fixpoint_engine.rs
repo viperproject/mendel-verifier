@@ -79,7 +79,9 @@ pub trait FixpointEngine<'mir, 'tcx: 'mir> {
                 // entry block
                 self.new_initial()
             } else {
-                self.new_bottom()
+                let bottom_state = self.new_bottom();
+                debug_assert!(bottom_state.is_bottom());
+                bottom_state
             };
 
             for &pred_bb in &mir.basic_blocks.predecessors()[bb] {

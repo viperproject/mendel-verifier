@@ -36,6 +36,12 @@ impl<'tcx> From<mir::Local> for Place<'tcx> {
     }
 }
 
+impl<'tcx> From<Place<'tcx>> for mir::Place<'tcx> {
+    fn from(place: Place<'tcx>) -> Self {
+        place.0
+    }
+}
+
 impl<'tcx> PartialOrd for Place<'tcx> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -95,6 +101,17 @@ pub fn location_to_stmt_str(location: mir::Location, mir: &mir::Body) -> String 
     }
 }
 
+pub fn place_ref_to_place<'tcx>(
+    place_ref: mir::PlaceRef<'tcx>,
+    tcx: ty::TyCtxt<'tcx>,
+) -> mir::Place<'tcx> {
+    let projection = tcx.mk_place_elems(place_ref.projection.iter());
+    mir::Place {
+        local: place_ref.local,
+        projection,
+    }
+}
+
 /// Check if the place `potential_prefix` is a prefix of `place`. For example:
 ///
 /// +   `is_prefix(x.f, x.f) == true`
@@ -126,67 +143,55 @@ pub fn expand_struct_place<'tcx, P: PlaceImpl<'tcx> + std::marker::Copy>(
 ) -> Vec<P> {
     let mut places: Vec<P> = Vec::new();
     let typ = place.to_mir_place().ty(mir, tcx);
-    if typ.variant_index.is_some() {
-        // Downcast is a no-op.
-    } else {
-        match typ.ty.kind() {
-            ty::Adt(def, substs) => {
-                assert!(
-                    def.is_struct(),
-                    "Only structs can be expanded. Got def={def:?}."
-                );
-                let variant = def.non_enum_variant();
-                for (index, field_def) in variant.fields.iter().enumerate() {
-                    if Some(index) != without_field {
-                        let field = mir::Field::from_usize(index);
-                        let field_place = tcx.mk_place_field(
-                            place.to_mir_place(),
-                            field,
-                            field_def.ty(tcx, substs),
-                        );
-                        places.push(P::from_mir_place(field_place));
-                    }
+    if !matches!(typ.ty.kind(), ty::Adt(..)) {
+        assert!(
+            typ.variant_index.is_none(),
+            "We have assumed that only enums can have variant_index set. Got {typ:?}."
+        );
+    }
+    match typ.ty.kind() {
+        ty::Adt(def, substs) => {
+            let variant = typ
+                .variant_index
+                .map(|i| def.variant(i))
+                .unwrap_or_else(|| def.non_enum_variant());
+            for (index, field_def) in variant.fields.iter().enumerate() {
+                if Some(index) != without_field {
+                    let field = mir::Field::from_usize(index);
+                    let field_place =
+                        tcx.mk_place_field(place.to_mir_place(), field, field_def.ty(tcx, substs));
+                    places.push(P::from_mir_place(field_place));
                 }
-            }
-            ty::Tuple(slice) => {
-                for (index, arg) in slice.iter().enumerate() {
-                    if Some(index) != without_field {
-                        let field = mir::Field::from_usize(index);
-                        let field_place = tcx.mk_place_field(place.to_mir_place(), field, arg);
-                        places.push(P::from_mir_place(field_place));
-                    }
-                }
-            }
-            ty::Ref(_region, _ty, _) => match without_field {
-                Some(without_field) => {
-                    assert_eq!(without_field, 0, "References have only a single “field”.");
-                }
-                None => {
-                    places.push(P::from_mir_place(tcx.mk_place_deref(place.to_mir_place())));
-                }
-            },
-            ty::Closure(_, substs) => {
-                for (index, subst_ty) in substs.as_closure().upvar_tys().enumerate() {
-                    if Some(index) != without_field {
-                        let field = mir::Field::from_usize(index);
-                        let field_place = tcx.mk_place_field(place.to_mir_place(), field, subst_ty);
-                        places.push(P::from_mir_place(field_place));
-                    }
-                }
-            }
-            ty::Generator(_, substs, _) => {
-                for (index, subst_ty) in substs.as_generator().upvar_tys().enumerate() {
-                    if Some(index) != without_field {
-                        let field = mir::Field::from_usize(index);
-                        let field_place = tcx.mk_place_field(place.to_mir_place(), field, subst_ty);
-                        places.push(P::from_mir_place(field_place));
-                    }
-                }
-            }
-            ref ty => {
-                unimplemented!("ty={:?}", ty);
             }
         }
+        ty::Tuple(slice) => {
+            for (index, arg) in slice.iter().enumerate() {
+                if Some(index) != without_field {
+                    let field = mir::Field::from_usize(index);
+                    let field_place = tcx.mk_place_field(place.to_mir_place(), field, arg);
+                    places.push(P::from_mir_place(field_place));
+                }
+            }
+        }
+        ty::Closure(_, substs) => {
+            for (index, subst_ty) in substs.as_closure().upvar_tys().enumerate() {
+                if Some(index) != without_field {
+                    let field = mir::Field::from_usize(index);
+                    let field_place = tcx.mk_place_field(place.to_mir_place(), field, subst_ty);
+                    places.push(P::from_mir_place(field_place));
+                }
+            }
+        }
+        ty::Generator(_, substs, _) => {
+            for (index, subst_ty) in substs.as_generator().upvar_tys().enumerate() {
+                if Some(index) != without_field {
+                    let field = mir::Field::from_usize(index);
+                    let field_place = tcx.mk_place_field(place.to_mir_place(), field, subst_ty);
+                    places.push(P::from_mir_place(field_place));
+                }
+            }
+        }
+        ty => unreachable!("ty={:?}", ty),
     }
     places
 }
@@ -341,7 +346,10 @@ pub fn is_copy<'tcx>(
 
 /// Given an assignment `let _ = & <borrowed_place>`, this function returns the place that is
 /// blocked by the loan.
-/// For example, `let _ = &x.f.g` blocks just `x.f.g`, but `let _ = &x.f[0].g` blocks `x.f`.
+/// For example:
+/// * `let _ = &x.f.g` blocks just `x.f.g`
+/// * `let _ = &x.f[0].g` blocks `x.f`
+/// * `let _ = &(*x.f).g` blocks `x.f`
 pub fn get_blocked_place<'tcx>(tcx: TyCtxt<'tcx>, borrowed: Place<'tcx>) -> Place<'tcx> {
     for (place_ref, place_elem) in borrowed.iter_projections() {
         match place_elem {

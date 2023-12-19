@@ -7,8 +7,8 @@
 use analysis::{
     abstract_interpretation::FixpointEngine,
     domains::{
-        DefinitelyAccessibleAnalysis, DefinitelyInitializedAnalysis, FramingAnalysis,
-        MaybeBorrowedAnalysis, ReachingDefsAnalysis,
+        DefinitelyAccessibleAnalysis, DefinitelyInitializedAnalysis, DefinitelyUnreachableAnalysis,
+        FramingAnalysis, LocallySharedAnalysis, MaybeBorrowedAnalysis, ReachingDefsAnalysis,
     },
 };
 use prusti_rustc_interface::{
@@ -195,12 +195,16 @@ impl prusti_rustc_interface::driver::Callbacks for OurCompilerCalls {
                     true,
                 ));
                 assert!(!body_with_facts.input_facts.cfg_edge.is_empty());
+                let def_id = local_def_id.to_def_id();
                 let body = &body_with_facts.body;
+                let input_facts = &body_with_facts.input_facts;
+                let output_facts = body_with_facts.output_facts.as_ref();
+                let location_table = &body_with_facts.location_table;
 
                 match abstract_domain {
                     "ReachingDefsAnalysis" => {
-                        let result = ReachingDefsAnalysis::new(tcx, local_def_id.to_def_id(), body)
-                            .run_fwd_analysis();
+                        let result =
+                            ReachingDefsAnalysis::new(tcx, def_id, body).run_fwd_analysis();
                         match result {
                             Ok(state) => {
                                 println!("{}", serde_json::to_string_pretty(&state).unwrap())
@@ -209,9 +213,8 @@ impl prusti_rustc_interface::driver::Callbacks for OurCompilerCalls {
                         }
                     }
                     "DefinitelyInitializedAnalysis" => {
-                        let result =
-                            DefinitelyInitializedAnalysis::new(tcx, local_def_id.to_def_id(), body)
-                                .run_fwd_analysis();
+                        let result = DefinitelyInitializedAnalysis::new(tcx, def_id, body)
+                            .run_fwd_analysis();
                         match result {
                             Ok(state) => {
                                 println!("{}", serde_json::to_string_pretty(&state).unwrap())
@@ -220,12 +223,8 @@ impl prusti_rustc_interface::driver::Callbacks for OurCompilerCalls {
                         }
                     }
                     "RelaxedDefinitelyInitializedAnalysis" => {
-                        let result = DefinitelyInitializedAnalysis::new_relaxed(
-                            tcx,
-                            local_def_id.to_def_id(),
-                            body,
-                        )
-                        .run_fwd_analysis();
+                        let result = DefinitelyInitializedAnalysis::new_relaxed(tcx, def_id, body)
+                            .run_fwd_analysis();
                         match result {
                             Ok(state) => {
                                 println!("{}", serde_json::to_string_pretty(&state).unwrap())
@@ -234,8 +233,8 @@ impl prusti_rustc_interface::driver::Callbacks for OurCompilerCalls {
                         }
                     }
                     "MaybeBorrowedAnalysis" => {
-                        let analyzer = MaybeBorrowedAnalysis::new(tcx, &body_with_facts);
-                        match analyzer.run_analysis() {
+                        let analyzer = MaybeBorrowedAnalysis::new(tcx, body);
+                        match analyzer.run_analysis(input_facts, output_facts, location_table) {
                             Ok(state) => {
                                 println!("{}", serde_json::to_string_pretty(&state).unwrap())
                             }
@@ -243,22 +242,65 @@ impl prusti_rustc_interface::driver::Callbacks for OurCompilerCalls {
                         }
                     }
                     "DefinitelyAccessibleAnalysis" => {
-                        let analyzer = DefinitelyAccessibleAnalysis::new(
-                            tcx,
-                            local_def_id.to_def_id(),
-                            &body_with_facts,
-                        );
-                        match analyzer.run_analysis() {
+                        let analyzer = DefinitelyAccessibleAnalysis::new(tcx, def_id, body);
+                        match analyzer.run_analysis(input_facts, output_facts, location_table) {
                             Ok(state) => {
                                 println!("{}", serde_json::to_string_pretty(&state).unwrap());
                             }
                             Err(e) => eprintln!("{}", e.to_pretty_str(body)),
                         }
                     }
+                    "DefinitelyUnreachableAnalysis" => {
+                        let dia_result = DefinitelyInitializedAnalysis::new(tcx, def_id, body)
+                            .run_fwd_analysis();
+                        let definitely_initialized_state = match dia_result {
+                            Ok(state) => state,
+                            Err(e) => panic!("{}", e.to_pretty_str(body)),
+                        };
+                        let dba_analysis = DefinitelyUnreachableAnalysis::new(
+                            tcx,
+                            def_id,
+                            body,
+                            input_facts,
+                            output_facts,
+                            location_table,
+                            definitely_initialized_state,
+                        );
+                        let dba_analysis = match dba_analysis {
+                            Ok(dba_analysis) => dba_analysis,
+                            Err(e) => panic!("{}", e.to_pretty_str(body)),
+                        };
+                        let dba_result = dba_analysis.run_fwd_analysis();
+                        match dba_result {
+                            Ok(state) => {
+                                println!("{}", serde_json::to_string_pretty(&state).unwrap())
+                            }
+                            Err(e) => eprintln!("{}", e.to_pretty_str(body)),
+                        }
+                    }
                     "FramingAnalysis" => {
-                        let analyzer =
-                            FramingAnalysis::new(tcx, local_def_id.to_def_id(), &body_with_facts);
-                        match analyzer.run_analysis() {
+                        let analyzer = FramingAnalysis::new(tcx, def_id, body);
+                        match analyzer.run_analysis(input_facts, output_facts, location_table) {
+                            Ok(state) => {
+                                println!("{}", serde_json::to_string_pretty(&state).unwrap());
+                            }
+                            Err(e) => eprintln!("{}", e.to_pretty_str(body)),
+                        }
+                    }
+                    "LocallySharedAnalysis" => {
+                        let da_result = DefinitelyAccessibleAnalysis::new(tcx, def_id, body)
+                            .run_analysis(input_facts, output_facts, location_table);
+                        let definitely_accessible_state = match da_result {
+                            Ok(state) => state,
+                            Err(e) => panic!("{}", e.to_pretty_str(body)),
+                        };
+                        let analyzer = LocallySharedAnalysis::new(
+                            tcx,
+                            def_id,
+                            body,
+                            Rc::new(definitely_accessible_state),
+                        );
+                        match analyzer.run_fwd_analysis() {
                             Ok(state) => {
                                 println!("{}", serde_json::to_string_pretty(&state).unwrap());
                             }
@@ -296,6 +338,11 @@ fn main() {
     compiler_args.push("-Zalways-encode-mir".to_owned());
     compiler_args.push("-Zcrate-attr=feature(register_tool)".to_owned());
     compiler_args.push("-Zcrate-attr=register_tool(analyzer)".to_owned());
+
+    // Useful for debugging:
+    // compiler_args.push("-Zdump-mir=all".to_owned());
+    // compiler_args.push("-Zdump-mir-graphviz".to_owned());
+    // compiler_args.push("-Zdump-mir-dir=log/mir".to_owned());
 
     let mut callbacks = OurCompilerCalls {
         args: callback_args,

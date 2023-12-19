@@ -8,12 +8,12 @@
 #![deny(unused_variables)]
 #![deny(unused_doc_comments)]
 
-// If only it wasn't generated automatically
-// so that one could do `clippy --fix`...
-#[allow(clippy::uninlined_format_args)]
-#[rustfmt::skip]
-#[path = "../gen/mod.rs"]
-mod gen;
+// Import from `target/debug/build/vir-<...>/out/import_gen.rs`
+include!(concat!(env!("OUT_DIR"), "/import_gen.rs"));
+
+// Dummy import to easily jump to the module using an IDE.
+#[allow(unused_imports)]
+use gen as _jump_to_gen;
 
 pub mod common;
 pub mod converter;

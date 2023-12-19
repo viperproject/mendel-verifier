@@ -7,7 +7,7 @@ use crate::{
 };
 use itertools::Itertools;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, quote_spanned, ToTokens};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
     parse_quote_spanned, punctuated::Punctuated, spanned::Spanned, visit::Visit,
     visit_mut::VisitMut, Expr, FnArg, GenericArgument, GenericParam, Pat, PatType, Token,
@@ -306,28 +306,6 @@ pub fn add_phantom_data_for_generic_params(item_struct: &mut syn::ItemStruct) {
         });
 
     item_struct.fields = syn::Fields::Unnamed(syn::parse_quote! { ( #(#fields),* ) });
-}
-
-/// We take the Generics (parameters) defined with the `#[extern_spec] impl<...>` (the `<...>`)
-/// but then need to pass those as arguments: `SomeStruct<...>`. This function translates from
-/// the syntax of one to the other; e.g. `<T: Bound, 'l: Bound, const C: usize>` -> `<T, 'l, C>`
-pub fn rewrite_generics(gens: &syn::Generics) -> syn::AngleBracketedGenericArguments {
-    let args: Vec<syn::GenericArgument> = gens
-        .params
-        .clone()
-        .into_iter()
-        .map(|gp| {
-            let ts = match gp {
-                syn::GenericParam::Type(syn::TypeParam { ident, .. })
-                | syn::GenericParam::Const(syn::ConstParam { ident, .. }) => {
-                    ident.into_token_stream()
-                }
-                syn::GenericParam::Lifetime(ld) => ld.lifetime.into_token_stream(),
-            };
-            syn::parse2::<syn::GenericArgument>(ts).unwrap()
-        })
-        .collect();
-    syn::parse_quote! { < #(#args),* > }
 }
 
 /// Checks that the given block is a stub (`;`), returning an error otherwise.

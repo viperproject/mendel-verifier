@@ -16,6 +16,7 @@ use vir_crate::polymorphic::{self as vir, ExprIterator};
 
 pub(super) fn needs_invariant_func(ty: ty::Ty<'_>) -> bool {
     match ty.kind() {
+        _ if ty.is_unit() => false,
         ty::TyKind::Ref(_, ty, _) => needs_invariant_func(*ty),
         ty::TyKind::Adt(adt_def, _) if adt_def.is_box() => needs_invariant_func(ty.boxed_ty()),
         //ty::TyKind::Int(..)
@@ -78,13 +79,16 @@ pub(super) fn encode_invariant_def<'p, 'v: 'p, 'tcx: 'v>(
         ty::TyKind::Tuple(substs) => {
             for (field_num, field_ty) in substs.iter().enumerate() {
                 let field_name = format!("tuple_{field_num}");
-                conjuncts.push(encoder.encode_invariant_func_app(
+                let opt_inv = encoder.encode_invariant_func_app(
                     field_ty,
                     vir::Expr::snap_app(vir::Expr::field(
                         arg_expr.clone(),
                         encoder.encode_raw_ref_field(field_name.to_string(), field_ty)?,
                     )),
-                )?);
+                )?;
+                if let Some(inv) = opt_inv {
+                    conjuncts.push(inv);
+                }
             }
         }
 
@@ -92,13 +96,16 @@ pub(super) fn encode_invariant_def<'p, 'v: 'p, 'tcx: 'v>(
             let cl_substs = substs.as_closure();
             for (field_num, field_ty) in cl_substs.upvar_tys().enumerate() {
                 let field_name = format!("closure_{field_num}");
-                conjuncts.push(encoder.encode_invariant_func_app(
+                let opt_inv = encoder.encode_invariant_func_app(
                     field_ty,
                     vir::Expr::snap_app(vir::Expr::field(
                         arg_expr.clone(),
                         encoder.encode_raw_ref_field(field_name.to_string(), field_ty)?,
                     )),
-                )?);
+                )?;
+                if let Some(inv) = opt_inv {
+                    conjuncts.push(inv);
+                }
             }
         }
 
@@ -106,13 +113,16 @@ pub(super) fn encode_invariant_def<'p, 'v: 'p, 'tcx: 'v>(
             if adt_def.is_struct() {
                 for field in adt_def.all_fields() {
                     let field_ty = field.ty(tcx, substs);
-                    conjuncts.push(encoder.encode_invariant_func_app(
+                    let opt_inv = encoder.encode_invariant_func_app(
                         field_ty,
                         vir::Expr::snap_app(vir::Expr::field(
                             arg_expr.clone(),
                             encoder.encode_struct_field(&field.ident(tcx).to_string(), field_ty)?,
                         )),
-                    )?);
+                    )?;
+                    if let Some(inv) = opt_inv {
+                        conjuncts.push(inv);
+                    }
                 }
             } else if adt_def.is_enum() {
                 let predicate = encoder.encode_type_predicate_def(ty)?;
@@ -137,7 +147,10 @@ pub(super) fn encode_invariant_def<'p, 'v: 'p, 'tcx: 'v>(
                             field_base.clone(),
                             encoder.encode_struct_field(&field.ident(tcx).to_string(), field_ty)?,
                         ));
-                        fields.push(encoder.encode_invariant_func_app(field_ty, field)?);
+                        let opt_inv = encoder.encode_invariant_func_app(field_ty, field)?;
+                        if let Some(inv) = opt_inv {
+                            fields.push(inv);
+                        }
                     }
 
                     let discriminant_raw = adt_def
