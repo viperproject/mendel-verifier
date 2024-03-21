@@ -13,7 +13,7 @@ impl<T> Cell<T> {}
 #[capable(&self => noWriteRef(self.as_ptr()))]
 impl<T> Cell<T> {}
 
-#[capable(&mut self => unique(self.as_ptr()))]
+#[capable(&mut self => writeRef(self.as_ptr()))]
 impl<T> Cell<T> {}
 
 #[extern_spec]
