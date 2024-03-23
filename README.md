@@ -36,7 +36,7 @@ The test suite and evaluation can be found in the [`prusti-tests/tests/verify_sa
 ## Capability annotations
 
 > [!NOTE]
-> This is a brief summary! Read chapter 4 of Federico Poli's PhD thesis for more examples and an in-depth description.
+> This is a brief summary! Read chapter 4 of Federico Poli's PhD thesis (currently still under review) for more examples and an in-depth description.
 
 This tool provides the following annotation to declare the implicit capabilities of library types with interior mutability:
 ```rust
@@ -69,7 +69,7 @@ A brief summary of the capability kinds and their meaning:
 | `writeRef`  | The source can obtain a mutable reference to the target. | `&mut` |
 | `readRef`   | The source can obtain a shared reference to the target. | `&` |
 | `localRef`  | The target is `readRef` and `local`. | ... |
-| `unique`    | The target can be accessed only via the source place. | Content of `&mut Cell` |
+| `unique`    | The target can be accessed only via the source place. | ... |
 | `local`     | The target is thread-local. | Content of `&RefCell` |
 | `write`     | The target can be written via the source. | Content of `&AtomicI32` |
 | `immutable` | The target is immutable. | The borrow-count of a `&RefMut` |
