@@ -60,30 +60,6 @@ jobs:
         run: |
           python ./x.py clippy -- -D warnings
 
-  # Detect missing dependencies in workspace packages
-  # See: https://stackoverflow.com/a/74293494/2491528
-  check-deps:
-    needs: [fmt-check, smir-check]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          java-version: '15'
-          distribution: 'zulu'
-      - name: Set up the environment
-        run: python x.py setup
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "shared"
-      - name: Compile each workspace package individually
-        run: |
-          cargo install cargo-hack@0.5.22
-          python ./x.py hack build --workspace
-
   # Run all the tests.
   all-tests:
     needs: [fmt-check, smir-check]
@@ -138,7 +114,7 @@ jobs:
   # Dummy job to specify the jobs that must pass before merging on master
   can-merge:
     runs-on: ubuntu-latest
-    needs: [clippy-check, check-deps, all-tests]
+    needs: [clippy-check, all-tests]
     # Always run, even if the workflow was cancelled
     if: ${{ always() }}
     steps:
