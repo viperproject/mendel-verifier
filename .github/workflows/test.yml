@@ -69,7 +69,7 @@ jobs:
           shared-key: "shared"
       - name: Compile each workspace package individually
         run: |
-          cargo install cargo-hack
+          cargo install cargo-hack@0.5.22
           python ./x.py hack build --workspace
 
   # Check that we depend on the compiler only through SMIR.
