@@ -40,8 +40,21 @@ pub fn encode_bin_op_expr(
         mir::BinOp::Le => vir::Expr::le_cmp(left, right),
         mir::BinOp::Add => vir::Expr::add(left, right),
         mir::BinOp::Sub => vir::Expr::sub(left, right),
-        mir::BinOp::Rem => vir::Expr::rem(left, right),
-        mir::BinOp::Div => vir::Expr::div(left, right),
+        mir::BinOp::Rem => {
+            if matches!(ty.kind(), ty::TyKind::Uint(_)) {
+                vir::Expr::modulo(left, right)
+            } else {
+                vir::Expr::rem(left, right)
+            }
+        }
+        mir::BinOp::Div => {
+            if matches!(ty.kind(), ty::TyKind::Int(_)) {
+                vir::Expr::div(left, right)
+            } else {
+                // floats, unsigned integers
+                vir::Expr::viper_div(left, right)
+            }
+        }
         mir::BinOp::Mul => vir::Expr::mul(left, right),
         mir::BinOp::BitAnd if is_bool => vir::Expr::and(left, right),
         mir::BinOp::BitOr if is_bool => vir::Expr::or(left, right),

@@ -81,7 +81,7 @@ lazy_static::lazy_static! {
         settings.set_default("check_panics", true).unwrap();
         settings.set_default("encode_unsigned_num_constraint", false).unwrap();
         settings.set_default("encode_bitvectors", false).unwrap();
-        settings.set_default("simplify_encoding", true).unwrap();
+        settings.set_default("simplify_encoding", false).unwrap();
         settings.set_default("log", "").unwrap();
         settings.set_default("log_style", "auto").unwrap();
         settings.set_default("log_dir", "log").unwrap();
