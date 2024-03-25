@@ -2,11 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [master, staging, trying]
-    paths-ignore: 'docs/**'
+    branches: 'master'
   pull_request:
-    branches: [master]
-    paths-ignore: 'docs/**'
+    branches: 'master'
 
 # Cancel previous runs in a PR when pushing new commits
 concurrency:
@@ -24,22 +22,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Check formatting
         run: |
           rustup component add rustfmt
           python ./x.py fmt-check-all
 
-  # Run clippy checks
-  clippy-check:
+  # Check that we depend on the compiler only through SMIR.
+  smir-check:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+      - name: Check and report illegal extern crate.
+        run: |
+          python ./x.py check-smir
+
+  # Run clippy checks
+  clippy-check:
+    needs: [fmt-check, smir-check]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
       - name: Set up Java
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
           java-version: '15'
+          distribution: 'zulu'
       - name: Set up the environment
         run: python x.py setup
       - name: Cache cargo
@@ -53,14 +63,16 @@ jobs:
   # Detect missing dependencies in workspace packages
   # See: https://stackoverflow.com/a/74293494/2491528
   check-deps:
+    needs: [fmt-check, smir-check]
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Java
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
           java-version: '15'
+          distribution: 'zulu'
       - name: Set up the environment
         run: python x.py setup
       - name: Cache cargo
@@ -72,44 +84,9 @@ jobs:
           cargo install cargo-hack@0.5.22
           python ./x.py hack build --workspace
 
-  # Check that we depend on the compiler only through SMIR.
-  smir-check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
-      - name: Check and report illegal extern crate.
-        run: |
-          python ./x.py check-smir
-
-  # Run a subset of the tests that used to fail often.
-  # The goal here is to fail fast and give quick feedback to the developers.
-  # This job intentionally doesn't use the verification cache.
-  quick-tests:
-    runs-on: ubuntu-latest
-    env:
-      PRUSTI_CACHE_PATH: ${{ github.workspace }}/prusti_cache.bin
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
-      - name: Set up Java
-        uses: actions/setup-java@v1
-        with:
-          java-version: '15'
-      - name: Set up the environment
-        run: python x.py setup
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "shared"
-      - name: Build with cargo
-        run: python x.py build --all
-      - name: Run quick tests
-        run: python x.py test --all quick
-
   # Run all the tests.
   all-tests:
-    needs: [fmt-check, clippy-check, check-deps, smir-check, quick-tests]
+    needs: [fmt-check, smir-check]
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -119,15 +96,16 @@ jobs:
       PRUSTI_CACHE_PATH: ${{ github.workspace }}/prusti_cache.bin
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Python 3
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
       - name: Set up Java
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
           java-version: '15'
+          distribution: 'zulu'
       - name: Set up the environment
         run: python x.py setup
       - name: Cache cargo
@@ -149,69 +127,22 @@ jobs:
           # Restore from the most recent cache that matches a shared prefix of the key
           restore-keys: ${{ env.VER_CACHE_KEY_SHARED }}
       - name: Build with cargo
-        run: python x.py build --all
+        run: python x.py build --all --jobs 1
       - name: Run cargo tests
-        run: python x.py test --all
+        run: python x.py test --all --jobs 1
       - name: Check prusti-contracts
         run: |
           cd prusti-contracts/prusti-contracts-test/
           cargo +stable build
 
-  # Run Prusti on itself.
-  # Disabled because of a bug when compiling jni-gen
-  test-on-prusti:
-    needs: [fmt-check, clippy-check, check-deps, smir-check, quick-tests]
+  # Dummy job to specify the jobs that must pass before merging on master
+  can-merge:
     runs-on: ubuntu-latest
-    if: false
+    needs: [clippy-check, check-deps, all-tests]
+    # Always run, even if the workflow was cancelled
+    if: ${{ always() }}
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
-      - name: Set up Java
-        uses: actions/setup-java@v1
+      - name: Fail if the workflow failed or was cancelled
+        uses: re-actors/alls-green@release/v1
         with:
-          java-version: '15'
-      - name: Set up the environment
-        run: python x.py setup
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "shared"
-      - name: Build with cargo
-        run: python x.py build --release --all
-      - name: Run cargo-prusti on Prusti
-        run: python x.py exec target/release/cargo-prusti
-        env:
-          PRUSTI_SKIP_UNSUPPORTED_FEATURES: true
-          PRUSTI_FULL_COMPILATION: true
-          PRUSTI_CHECK_PANICS: false
-          PRUSTI_CHECK_OVERFLOWS: false
-          PRUSTI_INTERNAL_ERRORS_AS_WARNINGS: true
-
-  # Test cargo-prusti on a collection of crates.
-  test-crates:
-    needs: [fmt-check, clippy-check, check-deps, smir-check, quick-tests]
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        shard_index: [0, 1, 2, 3]
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
-      - name: Setup Python 3
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
-      - name: Set up Java
-        uses: actions/setup-java@v1
-        with:
-          java-version: '15'
-      - name: Set up the environment
-        run: python x.py setup
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "shared"
-      - name: Build with cargo --release
-        run: python x.py build --release --all
-      - name: Test Prusti on a collection of crates
-        run: ./target/release/test-crates --fail-fast --num-shards=4 --shard-index=${{ matrix.shard_index }}
+          jobs: ${{ toJSON(needs) }}
