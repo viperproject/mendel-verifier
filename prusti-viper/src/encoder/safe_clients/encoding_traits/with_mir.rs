@@ -6,8 +6,7 @@
 
 use prelude::pure_encoder::MirInterpreter;
 
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::errors::PanicCause;
+use crate::encoder::{errors::PanicCause, safe_clients::prelude::*};
 
 pub trait WithMir<'v, 'tcx: 'v>: WithDefId<'v, 'tcx> + WithLocalTy<'v, 'tcx> {
     fn mir(&self) -> &mir::Body<'tcx>;
@@ -35,9 +34,8 @@ pub trait WithMir<'v, 'tcx: 'v>: WithDefId<'v, 'tcx> + WithLocalTy<'v, 'tcx> {
 
     /// Return the cause of a call to `begin_panic`
     fn encode_panic_cause(&self, span: Span) -> PanicCause {
-        crate::encoder::mir_encoder::MirEncoder::new(
-            self.encoder(), self.mir(), self.def_id(),
-        ).encode_panic_cause(span)
+        crate::encoder::mir_encoder::MirEncoder::new(self.encoder(), self.mir(), self.def_id())
+            .encode_panic_cause(span)
     }
 
     // Translates a MIR body to a MirExpr.
@@ -49,10 +47,14 @@ pub trait WithMir<'v, 'tcx: 'v>: WithDefId<'v, 'tcx> + WithLocalTy<'v, 'tcx> {
 
     /// Translated an expression `expr` at `final_loc` in the context at the beginning of `initial_bb`.
     fn backward_interpret_expr(
-        &self, final_expr: MirExpr<'tcx>, initial_bb: mir::BasicBlock, final_loc: mir::Location,
+        &self,
+        final_expr: MirExpr<'tcx>,
+        initial_bb: mir::BasicBlock,
+        final_loc: mir::Location,
     ) -> SpannedEncodingResult<MirExpr<'tcx>> {
         let mir_interpreter = MirInterpreter::new(self.mir(), self.tcx());
-        let mut mir_expr = mir_interpreter.encode_point_to_point(final_expr, initial_bb, final_loc)?;
+        let mut mir_expr =
+            mir_interpreter.encode_point_to_point(final_expr, initial_bb, final_loc)?;
         mir_expr.normalize();
         Ok(mir_expr)
     }

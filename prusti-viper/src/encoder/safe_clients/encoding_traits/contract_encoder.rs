@@ -4,17 +4,23 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::mir::pure::PureEncodingContext;
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::contracts::ProcedureContractMirDef;
+use crate::encoder::{
+    mir::{contracts::ProcedureContractMirDef, pure::PureEncodingContext},
+    safe_clients::prelude::*,
+};
 
 /// Trait used to encode the pre/postcondition of the current function.
-pub trait ContractEncoder<'v, 'tcx: 'v>: PlaceEncoder<'v, 'tcx> + WithDefId<'v, 'tcx> + WithOldPlaceEncoder<'v, 'tcx> {
+pub trait ContractEncoder<'v, 'tcx: 'v>:
+    PlaceEncoder<'v, 'tcx> + WithDefId<'v, 'tcx> + WithOldPlaceEncoder<'v, 'tcx>
+{
     fn contract(&self) -> &ProcedureContractMirDef<'tcx>;
 
     /// Encode the pre/post-condition (functional specification).
     /// Value ranges are currently not supported.
-    fn encode_contract_expr(&self, spec_expr_kind: SpecExprKind) -> SpannedEncodingResult<Vec<vir::Expr>> {
+    fn encode_contract_expr(
+        &self,
+        spec_expr_kind: SpecExprKind,
+    ) -> SpannedEncodingResult<Vec<vir::Expr>> {
         let contract = self.contract();
         let old_place_encoder = self.old_place_encoder().with_span(self.span())?;
 
@@ -88,9 +94,9 @@ pub trait ContractEncoder<'v, 'tcx: 'v>: PlaceEncoder<'v, 'tcx> + WithDefId<'v, 
                 PureEncodingContext::Assertion,
             );
             let expr = assertion_encoder.encode_body(GhostOrExec::Ghost)?;
-            let expr_value = self.encode_snapshot_primitive_value(
-                SnapshotExpr::new_memory(expr), bool_ty,
-            ).with_span(self.span())?;
+            let expr_value = self
+                .encode_snapshot_primitive_value(SnapshotExpr::new_memory(expr), bool_ty)
+                .with_span(self.span())?;
             let expr_pos = self.register_span(assertion_span);
             func_spec.push(expr_value.set_default_pos(expr_pos));
         }

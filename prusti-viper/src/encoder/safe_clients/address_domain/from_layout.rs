@@ -5,8 +5,8 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::encoder::safe_clients::prelude::*;
-use type_layout::*;
 use address_domain::*;
+use type_layout::*;
 
 /// Encodes a generic domain
 /// The returned domain has the following functions, in order:
@@ -14,14 +14,20 @@ use address_domain::*;
 /// * A discriminant, if the type is an enum.
 /// * A destructor (aka getter) for each field, in the order of the variants.
 pub(super) fn build_address_domain_from_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>, layout: TypeLayout<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+    layout: TypeLayout<'tcx>,
 ) -> EncodingResult<vir::Domain> {
-    trace!("build_address_domain_from_layout {ty:?} with {} variants", layout.variants.len());
+    trace!(
+        "build_address_domain_from_layout {ty:?} with {} variants",
+        layout.variants.len()
+    );
     debug_assert!(ty.is_enum() || layout.variants.len() <= 1); // the never type has zero variants
     let ty_name = types::encode_type_name(encoder, ty)?;
     let domain_name = address_domain_name(encoder, ty)?;
     let address_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::Address(ty))?;
-    let snapshot_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(ty))?;
+    let snapshot_type =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(ty))?;
     let version_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::Version)?;
 
     let deref_function = vir::DomainFunc::new(
@@ -50,13 +56,12 @@ pub(super) fn build_address_domain_from_layout<'v, 'tcx: 'v>(
         let mut variant_base_to_fields = vec![];
         for (field_idx, field) in variant.fields.iter().enumerate() {
             if let Some(field_ty) = field.ty.as_ref().copied() {
-                let field_address_type = encoder.encode_builtin_domain_type(
-                    BuiltinDomainKind::Address(field_ty),
-                )?;
+                let field_address_type =
+                    encoder.encode_builtin_domain_type(BuiltinDomainKind::Address(field_ty))?;
                 variant_base_to_fields.push(vir::DomainFunc::new(
                     &domain_name,
                     field_function_name(&ty_name, &field.name),
-                    vec![ vir::LocalVar::new("base", address_type.clone()) ],
+                    vec![vir::LocalVar::new("base", address_type.clone())],
                     field_address_type,
                 ));
             } else {
@@ -80,13 +85,12 @@ pub(super) fn build_address_domain_from_layout<'v, 'tcx: 'v>(
         let mut variant_fields_to_base = vec![];
         for (field_idx, field) in variant.fields.iter().enumerate() {
             if let Some(field_ty) = field.ty.as_ref().copied() {
-                let field_address_type = encoder.encode_builtin_domain_type(
-                    BuiltinDomainKind::Address(field_ty),
-                )?;
+                let field_address_type =
+                    encoder.encode_builtin_domain_type(BuiltinDomainKind::Address(field_ty))?;
                 variant_fields_to_base.push(vir::DomainFunc::new(
                     &domain_name,
                     base_function_name(&ty_name, &field.name),
-                    vec![ vir::LocalVar::new("field_addr", field_address_type) ],
+                    vec![vir::LocalVar::new("field_addr", field_address_type)],
                     address_type.clone(),
                 ));
             } else {
@@ -112,7 +116,8 @@ pub(super) fn build_address_domain_from_layout<'v, 'tcx: 'v>(
             if field.ty.is_some() {
                 let base_addr = vir::LocalVar::new("base_addr", address_type.clone());
                 let field_addr = base_to_fields[variant_idx][field_idx].apply1(base_addr.clone());
-                let base_field_addr = fields_to_base[variant_idx][field_idx].apply1(field_addr.clone());
+                let base_field_addr =
+                    fields_to_base[variant_idx][field_idx].apply1(field_addr.clone());
                 let body = vir_expr!(
                     forall [base_addr] :: { [field_addr] } :: ((local [base_addr]) == [base_field_addr])
                 );
@@ -135,10 +140,9 @@ pub(super) fn build_address_domain_from_layout<'v, 'tcx: 'v>(
             vec![deref_function, id_function],
             base_to_fields.concat(),
             fields_to_base.concat(),
-        ].concat(),
-        axioms: vec![
-            base_axioms,
-        ].concat(),
+        ]
+        .concat(),
+        axioms: vec![base_axioms].concat(),
         type_vars: vec![],
     })
 }

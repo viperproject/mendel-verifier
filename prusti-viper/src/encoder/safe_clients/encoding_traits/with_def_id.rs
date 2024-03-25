@@ -19,10 +19,14 @@ pub trait WithDefId<'v, 'tcx: 'v>: WithEncoder<'v, 'tcx> {
     }
 
     fn register_span<T: Into<MultiSpan>>(&self, span: T) -> vir::Position {
-        self.encoder().error_manager().register_span(self.def_id(), span)
+        self.encoder()
+            .error_manager()
+            .register_span(self.def_id(), span)
     }
 
     fn register_error<T: Into<MultiSpan>>(&self, span: T, error_ctxt: ErrorCtxt) -> vir::Position {
-        self.encoder().error_manager().register_error(span, error_ctxt, self.def_id())
+        self.encoder()
+            .error_manager()
+            .register_error(span, error_ctxt, self.def_id())
     }
 }

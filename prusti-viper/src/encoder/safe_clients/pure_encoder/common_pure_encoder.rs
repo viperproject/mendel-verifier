@@ -4,11 +4,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::pure::FunctionCallInfo;
+use crate::encoder::{mir::pure::FunctionCallInfo, safe_clients::prelude::*};
 
 /// Trait used to encode a pure function, trigger or predicate to a `vir::Function`.
-pub(crate) trait CommonPureEncoder<'v, 'tcx: 'v>: WithSig<'v, 'tcx> + PlaceEncoder<'v, 'tcx> + ContractEncoder<'v, 'tcx> + SubstsEncoder<'v, 'tcx> + Sized {
+pub(crate) trait CommonPureEncoder<'v, 'tcx: 'v>:
+    WithSig<'v, 'tcx>
+    + PlaceEncoder<'v, 'tcx>
+    + ContractEncoder<'v, 'tcx>
+    + SubstsEncoder<'v, 'tcx>
+    + Sized
+{
     fn caller_def_id(&self) -> DefId;
     fn get_local_span(&self, local: mir::Local) -> Span;
 
@@ -39,7 +44,10 @@ pub(crate) trait CommonPureEncoder<'v, 'tcx: 'v>: WithSig<'v, 'tcx> + PlaceEncod
         } else {
             BuiltinDomainKind::MemorySnapshot(local_ty)
         };
-        let typ = self.encoder().encode_builtin_domain_type(domain_kind).with_span(local_span)?;
+        let typ = self
+            .encoder()
+            .encode_builtin_domain_type(domain_kind)
+            .with_span(local_span)?;
         Ok(vir::LocalVar { name, typ })
     }
 
@@ -49,7 +57,9 @@ pub(crate) trait CommonPureEncoder<'v, 'tcx: 'v>: WithSig<'v, 'tcx> + PlaceEncod
             formal_args.push(self.encode_local_snapshot_var(arg)?);
         }
         if self.is_pure_unstable(None, self.def_id(), self.substs()) {
-            let version_type = self.encoder().encode_builtin_domain_type(BuiltinDomainKind::Version)
+            let version_type = self
+                .encoder()
+                .encode_builtin_domain_type(BuiltinDomainKind::Version)
                 .with_span(self.span())?;
             formal_args.push(vir::LocalVar::new("__version", version_type));
         }
@@ -78,9 +88,15 @@ pub(crate) trait CommonPureEncoder<'v, 'tcx: 'v>: WithSig<'v, 'tcx> + PlaceEncod
         body: Option<vir::Expr>,
     ) -> SpannedEncodingResult<vir::Function> {
         if let Some(actual_body) = &body {
-            debug!("Encode pure function {} given body {actual_body}", self.encode_name());
+            debug!(
+                "Encode pure function {} given body {actual_body}",
+                self.encode_name()
+            );
         } else {
-            debug!("Encode pure function {} given body None", self.encode_name());
+            debug!(
+                "Encode pure function {} given body None",
+                self.encode_name()
+            );
         }
 
         // Check types
@@ -89,10 +105,16 @@ pub(crate) trait CommonPureEncoder<'v, 'tcx: 'v>: WithSig<'v, 'tcx> + PlaceEncod
         }
 
         let default_pos = self.register_error(self.span(), ErrorCtxt::PureFunctionDefinition);
-        let preconditions = self.encode_contract_expr(SpecExprKind::Pre)?
-            .into_iter().map(|e| e.set_default_pos(default_pos)).collect();
-        let postconditions = self.encode_contract_expr(SpecExprKind::Post)?
-            .into_iter().map(|e| e.set_default_pos(default_pos)).collect();
+        let preconditions = self
+            .encode_contract_expr(SpecExprKind::Pre)?
+            .into_iter()
+            .map(|e| e.set_default_pos(default_pos))
+            .collect();
+        let postconditions = self
+            .encode_contract_expr(SpecExprKind::Post)?
+            .into_iter()
+            .map(|e| e.set_default_pos(default_pos))
+            .collect();
         let info = self.encode_function_call_info()?;
 
         Ok(vir::Function {
@@ -119,7 +141,8 @@ pub(crate) trait CommonPureEncoder<'v, 'tcx: 'v>: WithSig<'v, 'tcx> + PlaceEncod
     /// Encodes the version to be used in pure (stable or unstable) function definitions.
     fn default_version(&self) -> EncodingResult<Option<vir::LocalVar>> {
         if self.is_pure_unstable(None, self.def_id(), self.substs()) {
-            let version_type = self.encoder()
+            let version_type = self
+                .encoder()
                 .encode_builtin_domain_type(BuiltinDomainKind::Version)?;
             Ok(Some(vir::LocalVar::new("__version", version_type)))
         } else {
@@ -133,7 +156,11 @@ fn check_args_and_result_are_copy<'v, 'tcx: 'v>(
 ) -> SpannedEncodingResult<()> {
     for local in iter_locals(this) {
         let local_ty = this.get_local_binder_ty(local);
-        if !this.env().query.type_is_copy(local_ty, this.caller_def_id()) {
+        if !this
+            .env()
+            .query
+            .type_is_copy(local_ty, this.caller_def_id())
+        {
             if local == mir::RETURN_PLACE {
                 error_incorrect!(this.get_local_span(local) =>
                     "non-ghost pure function return type must be Copy"
@@ -148,10 +175,14 @@ fn check_args_and_result_are_copy<'v, 'tcx: 'v>(
     Ok(())
 }
 
-fn iter_locals<'v, 'tcx: 'v>(this: &impl CommonPureEncoder<'v, 'tcx>) -> impl Iterator<Item = mir::Local> {
+fn iter_locals<'v, 'tcx: 'v>(
+    this: &impl CommonPureEncoder<'v, 'tcx>,
+) -> impl Iterator<Item = mir::Local> {
     (0..this.sig().inputs_and_output().skip_binder().len()).map(mir::Local::from_usize)
 }
 
-fn iter_args<'v, 'tcx: 'v>(this: &impl CommonPureEncoder<'v, 'tcx>) -> impl Iterator<Item = mir::Local> {
+fn iter_args<'v, 'tcx: 'v>(
+    this: &impl CommonPureEncoder<'v, 'tcx>,
+) -> impl Iterator<Item = mir::Local> {
     iter_locals(this).skip(1)
 }

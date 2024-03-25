@@ -33,7 +33,7 @@ pub fn encode_scalar<'tcx>(
                 value: vir::Const::Float(vir::FloatConst::F32(bits)),
                 position: vir::Position::default(),
             })
-        },
+        }
         ty::TyKind::Float(ty::FloatTy::F64) => {
             let bits = scalar.to_u64().unwrap();
             vir::Expr::Const(vir::ConstExpr {

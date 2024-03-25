@@ -4,10 +4,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::mir::contracts::{ProcedureContractMirDef, ContractsEncoderInterface};
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::pure::PureEncodingContext;
 use super::CommonPureEncoder;
+use crate::encoder::{
+    mir::{
+        contracts::{ContractsEncoderInterface, ProcedureContractMirDef},
+        pure::PureEncodingContext,
+    },
+    safe_clients::prelude::*,
+};
 
 /// Used to encode a pure item (i.e. pure function, method or predicate) to a `vir::Function`.
 pub struct PureBodyEncoder<'p, 'v: 'p, 'tcx: 'v> {
@@ -35,9 +39,13 @@ impl<'p, 'v: 'p, 'tcx: 'v> PureBodyEncoder<'p, 'v, 'tcx> {
         mir: MirBody<'tcx>,
         pure_encoding_context: PureEncodingContext,
     ) -> SpannedEncodingResult<Self> {
-        let sig = encoder.env().query.get_fn_sig_resolved(def_id, substs, caller_def_id);
+        let sig = encoder
+            .env()
+            .query
+            .get_fn_sig_resolved(def_id, substs, caller_def_id);
         debug_assert_eq!(sig.inputs().iter().count(), mir.args_iter().count());
-        let contract = encoder.get_mir_procedure_contract_for_def(def_id, substs)
+        let contract = encoder
+            .get_mir_procedure_contract_for_def(def_id, substs)
             .with_span(mir.span)?;
 
         Ok(PureBodyEncoder {
@@ -106,7 +114,10 @@ impl<'p, 'v: 'p, 'tcx: 'v> PlaceEncoder<'v, 'tcx> for PureBodyEncoder<'p, 'v, 't
         Ok(None)
     }
 
-    fn encode_promoted_mir_expr_snapshot(&self, mir_expr: &MirExpr<'tcx>) -> EncodingResult<SnapshotExpr> {
+    fn encode_promoted_mir_expr_snapshot(
+        &self,
+        mir_expr: &MirExpr<'tcx>,
+    ) -> EncodingResult<SnapshotExpr> {
         self.encode_mir_expr_snapshot(mir_expr, GhostOrExec::Exec)
     }
 }
@@ -136,7 +147,12 @@ impl<'p, 'v: 'p, 'tcx: 'v> CommonPureEncoder<'v, 'tcx> for PureBodyEncoder<'p, '
 }
 
 impl<'p, 'v: 'p, 'tcx: 'v> MirExprEncoder<'v, 'tcx> for PureBodyEncoder<'p, 'v, 'tcx> {
-    fn encode_failing_assertion(&self, msg: &mir::AssertMessage<'tcx>, domain_kind: BuiltinDomainKind<'tcx>, span: Span) -> SpannedEncodingResult<vir::Expr> {
+    fn encode_failing_assertion(
+        &self,
+        msg: &mir::AssertMessage<'tcx>,
+        domain_kind: BuiltinDomainKind<'tcx>,
+        span: Span,
+    ) -> SpannedEncodingResult<vir::Expr> {
         self.impl_encode_failing_assertion(msg, domain_kind, span)
     }
 
@@ -150,7 +166,15 @@ impl<'p, 'v: 'p, 'tcx: 'v> MirExprEncoder<'v, 'tcx> for PureBodyEncoder<'p, 'v, 
         span: Span,
         context: GhostOrExec,
     ) -> SpannedEncodingResult<SnapshotExpr> {
-        self.impl_encode_pure_function_call(called_def_id, call_substs, args, version, return_ty, span, context)
+        self.impl_encode_pure_function_call(
+            called_def_id,
+            call_substs,
+            args,
+            version,
+            return_ty,
+            span,
+            context,
+        )
     }
 }
 

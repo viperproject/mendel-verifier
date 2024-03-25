@@ -4,8 +4,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use strum_macros::Display;
 use crate::encoder::safe_clients::prelude::*;
+use strum_macros::Display;
 
 #[derive(Copy, Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SnapshotKind {

@@ -155,9 +155,7 @@ fn run_verification_overflow(group_name: &str, filter: &Option<String>) {
 // }
 
 fn run_verification_safe_clients_carbon(group_name: &str, filter: &Option<String>) {
-    let _temporary_env_vars = (
-        TemporaryEnvVar::set("PRUSTI_VIPER_BACKEND", "carbon"),
-    );
+    let _temporary_env_vars = (TemporaryEnvVar::set("PRUSTI_VIPER_BACKEND", "carbon"),);
     run_verification_base(group_name, filter);
 }
 

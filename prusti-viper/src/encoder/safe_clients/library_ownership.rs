@@ -4,12 +4,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::pure::PureEncodingContext;
-use crate::encoder::mir::specifications::SpecificationsInterface;
+use crate::encoder::{
+    mir::{pure::PureEncodingContext, specifications::SpecificationsInterface},
+    safe_clients::prelude::*,
+};
 use ownership_domain::{OwnershipDomain, OwnershipKind};
 
-pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<Vec<(String, vir::Expr)>> {
+pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<Vec<(String, vir::Expr)>> {
     trace!("build_library_ownership_axioms({:?})", ty);
     let ty_name = types::encode_type_name(encoder, ty)?;
     let version_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::Version)?;
@@ -24,7 +28,11 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
         return Ok(axioms);
     };
 
-    for (spec_idx, ownership_spec) in encoder.get_ownership_specs(adt_def.did()).drain(..).enumerate() {
+    for (spec_idx, ownership_spec) in encoder
+        .get_ownership_specs(adt_def.did())
+        .drain(..)
+        .enumerate()
+    {
         // TODO(fpoli): Verify that the target/condition expressions do not panic nor overflow.
 
         let root = vir::LocalVar::new("r", vir::Type::Int);
@@ -39,14 +47,16 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
         let condition: vir::Expr = if let Some(local_def_id) = ownership_spec.condition {
             let condition_def_id = local_def_id.to_def_id();
             let condition_span = tcx.def_span(condition_def_id);
-            let condition_mir = encoder.env().body.get_spec_body(
-                condition_def_id, substs, ownership_spec.source,
-            );
-            let condition_args_snapshot = [
-                SnapshotExpr::new_memory(
-                    address_domain.deref_function()?.apply2(address.clone(), version.clone()),
-                ),
-            ];
+            let condition_mir =
+                encoder
+                    .env()
+                    .body
+                    .get_spec_body(condition_def_id, substs, ownership_spec.source);
+            let condition_args_snapshot = [SnapshotExpr::new_memory(
+                address_domain
+                    .deref_function()?
+                    .apply2(address.clone(), version.clone()),
+            )];
             let condition_args_address = [Some(address.clone().into())];
             let condition_encoder = AssertionEncoder::new(
                 encoder,
@@ -65,7 +75,8 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
             debug_assert!(condition_ty.is_bool());
             let condition_snapshot = condition_encoder.encode_body(GhostOrExec::Ghost)?;
             let condition_snapshot_domain = MemSnapshotDomain::encode(encoder, condition_ty)?;
-            condition_snapshot_domain.primitive_field_function()?
+            condition_snapshot_domain
+                .primitive_field_function()?
                 .apply1(condition_snapshot)
         } else {
             true.into()
@@ -73,12 +84,17 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
 
         // Encode address of the target
         let target_parent_body = encoder.env().body.get_spec_body(
-            ownership_spec.target_parent.into(), substs, ownership_spec.source,
+            ownership_spec.target_parent.into(),
+            substs,
+            ownership_spec.source,
         );
-        let target_def_stmt = target_parent_body.stmt_at(mir::Location {
-            block: mir::START_BLOCK,
-            statement_index: 1,
-        }).left().unwrap();
+        let target_def_stmt = target_parent_body
+            .stmt_at(mir::Location {
+                block: mir::START_BLOCK,
+                statement_index: 1,
+            })
+            .left()
+            .unwrap();
         let mir::StatementKind::Assign(box (_, ref target_rhs)) = &target_def_stmt.kind else {
             unreachable!()
         };
@@ -100,7 +116,9 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
         let target_args_snapshot = [
             SnapshotExpr::new_memory(false.into()), // dummy
             SnapshotExpr::new_memory(
-                address_domain.deref_function()?.apply2(address.clone(), version.clone()),
+                address_domain
+                    .deref_function()?
+                    .apply2(address.clone(), version.clone()),
             ),
         ];
         let target_args_address = [None, Some(address.clone().into())];
@@ -117,13 +135,16 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
             // Ignore panic paths
             PureEncodingContext::Trigger,
         );
-        let target_address = target_ptr_snapshot_domain.target_address_function()?
+        let target_address = target_ptr_snapshot_domain
+            .target_address_function()?
             .apply1(target_encoder.encode_body(GhostOrExec::Ghost)?);
         // Address and version 2
         let target_args_snapshot_2 = [
             SnapshotExpr::new_memory(false.into()), // dummy
             SnapshotExpr::new_memory(
-                address_domain.deref_function()?.apply2(address_2.clone(), version_2.clone()),
+                address_domain
+                    .deref_function()?
+                    .apply2(address_2.clone(), version_2.clone()),
             ),
         ];
         let target_args_address_2 = [None, Some(address_2.clone().into())];
@@ -140,7 +161,8 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
             // Ignore panic paths
             PureEncodingContext::Trigger,
         );
-        let target_address_2 = target_ptr_snapshot_domain.target_address_function()?
+        let target_address_2 = target_ptr_snapshot_domain
+            .target_address_function()?
             .apply1(target_encoder_2.encode_body(GhostOrExec::Ghost)?);
 
         let &ty::TyKind::RawPtr(ty::TypeAndMut { ty: target_ty, .. }) = target_ptr_ty.kind() else {
@@ -148,10 +170,13 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
         };
         let target_ownership_domain = OwnershipDomain::encode(encoder, target_ty)?;
 
-        { // At program point
-            let base_fact = base_ownership_domain.ownership_fact_function(base_kind)?
+        {
+            // At program point
+            let base_fact = base_ownership_domain
+                .ownership_fact_function(base_kind)?
                 .apply3(root.clone(), address.clone(), version.clone());
-            let target_fact = target_ownership_domain.ownership_fact_function(target_kind)?
+            let target_fact = target_ownership_domain
+                .ownership_fact_function(target_kind)?
                 .apply3(root.clone(), target_address.clone(), version.clone());
             let body = vir_expr!(
                 forall [root], [address], [version] ::
@@ -163,10 +188,13 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
                 body,
             ));
         }
-        { // Across stmt
-            let base_fact = base_ownership_domain.framed_stmt_fact_function(base_kind)?
+        {
+            // Across stmt
+            let base_fact = base_ownership_domain
+                .framed_stmt_fact_function(base_kind)?
                 .apply3(address.clone(), version.clone(), version_2.clone());
-            let target_fact = target_ownership_domain.framed_stmt_fact_function(target_kind)?
+            let target_fact = target_ownership_domain
+                .framed_stmt_fact_function(target_kind)?
                 .apply3(target_address.clone(), version.clone(), version_2.clone());
             let body = vir_expr!(
                 forall [address], [version], [version_2] ::
@@ -178,10 +206,13 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
                 body,
             ));
         }
-        { // Across call
-            let base_fact = base_ownership_domain.framed_call_fact_function(base_kind)?
+        {
+            // Across call
+            let base_fact = base_ownership_domain
+                .framed_call_fact_function(base_kind)?
                 .apply3(address.clone(), version.clone(), version_2.clone());
-            let target_fact = target_ownership_domain.framed_call_fact_function(target_kind)?
+            let target_fact = target_ownership_domain
+                .framed_call_fact_function(target_kind)?
                 .apply3(target_address.clone(), version.clone(), version_2.clone());
             let body = vir_expr!(
                 forall [address], [version], [version_2] ::
@@ -189,22 +220,35 @@ pub fn build_library_ownership_axioms<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>,
                 (([base_fact] && [condition]) ==> [target_fact])
             );
             axioms.push((
-                format!("User-specified library ownership spec #{spec_idx} across call for {ty_name}"),
+                format!(
+                    "User-specified library ownership spec #{spec_idx} across call for {ty_name}"
+                ),
                 body,
             ));
         }
-        { // Across moves
-            let base_fact = base_ownership_domain.moved_fact_function()?
-                .apply4(address.clone(), version.clone(), address_2.clone(), version_2.clone());
-            let target_fact = target_ownership_domain.moved_fact_function()?
-                .apply4(target_address, version.clone(), target_address_2, version_2.clone());
+        {
+            // Across moves
+            let base_fact = base_ownership_domain.moved_fact_function()?.apply4(
+                address.clone(),
+                version.clone(),
+                address_2.clone(),
+                version_2.clone(),
+            );
+            let target_fact = target_ownership_domain.moved_fact_function()?.apply4(
+                target_address,
+                version.clone(),
+                target_address_2,
+                version_2.clone(),
+            );
             let body = vir_expr!(
                 forall [address], [version], [address_2], [version_2] ::
                 { [base_fact] } ::
                 (([base_fact] && [condition]) ==> [target_fact])
             );
             axioms.push((
-                format!("User-specified library ownership spec #{spec_idx} across move for {ty_name}"),
+                format!(
+                    "User-specified library ownership spec #{spec_idx} across move for {ty_name}"
+                ),
                 body,
             ));
         }

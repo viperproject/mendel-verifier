@@ -17,7 +17,6 @@
 #![feature(negative_impls)]
 #![feature(once_cell)]
 #![feature(option_result_contains)]
-
 #![deny(unused_must_use)]
 #![deny(unreachable_patterns)]
 // This Clippy chcek seems to be always wrong.

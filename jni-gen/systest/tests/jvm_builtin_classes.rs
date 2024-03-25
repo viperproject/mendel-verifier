@@ -1,9 +1,5 @@
-use jni::objects::JObject;
-use jni::InitArgsBuilder;
-use jni::JNIVersion;
-use jni::JavaVM;
-use systest::print_exception;
-use systest::wrappers::*;
+use jni::{objects::JObject, InitArgsBuilder, JNIVersion, JavaVM};
+use systest::{print_exception, wrappers::*};
 
 #[test]
 fn test_jvm_builtin_classes() {
@@ -32,15 +28,12 @@ fn test_jvm_builtin_classes() {
             env.with_local_frame(16, || {
                 let integer_value = java::lang::Integer::with(&env).new(int_value)?;
 
-                let int_array = env.new_object_array(
-                    array_length,
-                    "java/lang/Integer",
-                    integer_value,
-                )?;
+                let int_array =
+                    env.new_object_array(array_length, "java/lang/Integer", integer_value)?;
                 let int_array = unsafe { JObject::from_raw(int_array) };
 
-                let result = java::util::Arrays::with(&env)
-                    .call_binarySearch(int_array, integer_value)?;
+                let result =
+                    java::util::Arrays::with(&env).call_binarySearch(int_array, integer_value)?;
 
                 assert!(0 <= result && result < array_length);
 

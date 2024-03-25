@@ -4,9 +4,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use prusti_rustc_interface::errors::MultiSpan;
-use crate::encoder::errors::{SpannedEncodingError, EncodingError};
+use crate::encoder::errors::{EncodingError, SpannedEncodingError};
 use log::trace;
+use prusti_rustc_interface::errors::MultiSpan;
 
 /// Helper trait to add spans to encoding errors.
 pub trait WithSpan<T> {
@@ -14,7 +14,10 @@ pub trait WithSpan<T> {
     fn with_span<S: Into<MultiSpan>>(self, span: S) -> Result<T, SpannedEncodingError>;
 
     /// Like `with_span`, but the span is only computed if an error occurs.
-    fn set_span_with<S: Into<MultiSpan>>(self, span_callback: impl Fn() -> S) -> Result<T, SpannedEncodingError>;
+    fn set_span_with<S: Into<MultiSpan>>(
+        self,
+        span_callback: impl Fn() -> S,
+    ) -> Result<T, SpannedEncodingError>;
 
     /// Set the span of the error, but only if there is no previous span.
     fn with_default_span<S: Into<MultiSpan>>(self, span: S) -> Result<T, SpannedEncodingError>;
@@ -26,7 +29,8 @@ pub trait WithSpan<T> {
 /// Helper trait to add spans to encoding errors.
 pub trait WithOptDefaultSpan<T> {
     /// Like `with_default_span`, but the span is only set if it is `Some`.
-    fn with_opt_default_span<S: Into<MultiSpan>>(self, span: Option<S>) -> Result<T, EncodingError>;
+    fn with_opt_default_span<S: Into<MultiSpan>>(self, span: Option<S>)
+        -> Result<T, EncodingError>;
 }
 
 impl<T> WithSpan<T> for Result<T, EncodingError> {
@@ -37,7 +41,10 @@ impl<T> WithSpan<T> for Result<T, EncodingError> {
         })
     }
 
-    fn set_span_with<S: Into<MultiSpan>>(self, span_callback: impl Fn() -> S) -> Result<T, SpannedEncodingError> {
+    fn set_span_with<S: Into<MultiSpan>>(
+        self,
+        span_callback: impl Fn() -> S,
+    ) -> Result<T, SpannedEncodingError> {
         self.map_err(|err| {
             trace!("Converting a EncodingError to SpannedEncodingError in a Result");
             let span = span_callback();
@@ -62,7 +69,10 @@ impl<T> WithSpan<T> for Result<T, EncodingError> {
 }
 
 impl<T> WithOptDefaultSpan<T> for Result<T, EncodingError> {
-    fn with_opt_default_span<S: Into<MultiSpan>>(self, span: Option<S>) -> Result<T, EncodingError> {
+    fn with_opt_default_span<S: Into<MultiSpan>>(
+        self,
+        span: Option<S>,
+    ) -> Result<T, EncodingError> {
         if let Some(actual_span) = span {
             Ok(self.with_default_span(actual_span)?)
         } else {
@@ -79,7 +89,10 @@ impl<T> WithSpan<T> for Result<T, SpannedEncodingError> {
         })
     }
 
-    fn set_span_with<S: Into<MultiSpan>>(self, span_callback: impl Fn() -> S) -> Result<T, SpannedEncodingError> {
+    fn set_span_with<S: Into<MultiSpan>>(
+        self,
+        span_callback: impl Fn() -> S,
+    ) -> Result<T, SpannedEncodingError> {
         self.map_err(|err| {
             trace!("Converting a EncodingError to SpannedEncodingError in a Result");
             let span = span_callback();

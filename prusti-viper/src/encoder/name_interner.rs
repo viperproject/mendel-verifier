@@ -4,8 +4,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use rustc_hash::{FxHashMap, FxHashSet};
 use log::debug;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 /// Name interner.
 /// This structure can be used to shorten long unique names without losing the uniqueness property.
@@ -39,7 +39,7 @@ impl NameInterner {
         // Check that readable names passed in the past are not equal to the current full name.
         debug_assert!(
             self.name_to_symbol.contains_key(full_unique_name)
-            || !self.used_symbols.contains(full_unique_name)
+                || !self.used_symbols.contains(full_unique_name)
         );
 
         // Return the symbol, if we already interned the full name
@@ -48,13 +48,15 @@ impl NameInterner {
             return symbol.clone();
         }
 
-        let symbol = readable_names.iter()
+        let symbol = readable_names
+            .iter()
             .find(|r| !self.used_symbols.contains(r.as_ref()))
             .map(|r| r.as_ref())
             .unwrap_or(full_unique_name);
         debug!("Interning of {:?} is {:?}", full_unique_name, symbol);
         self.used_symbols.insert(symbol.to_string());
-        self.name_to_symbol.insert(full_unique_name.to_string(), symbol.to_string());
+        self.name_to_symbol
+            .insert(full_unique_name.to_string(), symbol.to_string());
 
         symbol.to_string()
     }
@@ -88,7 +90,10 @@ mod tests {
     #[test]
     fn test_full_name_eq_readable_names() {
         let mut interner = NameInterner::new();
-        assert_eq!(interner.intern("my$first$name", &["my$first$name"]), "my$first$name");
+        assert_eq!(
+            interner.intern("my$first$name", &["my$first$name"]),
+            "my$first$name"
+        );
     }
 
     #[test]
@@ -102,13 +107,31 @@ mod tests {
     #[test]
     fn test_multiple_readable_names() {
         let mut interner = NameInterner::new();
-        assert_eq!(interner.intern("my$first$name", &["name", "first$name"]), "name");
-        assert_eq!(interner.intern("my$first$name", &["name", "first$name"]), "name");
-        assert_eq!(interner.intern("my$second$name", &["name", "second$name"]), "second$name");
+        assert_eq!(
+            interner.intern("my$first$name", &["name", "first$name"]),
+            "name"
+        );
+        assert_eq!(
+            interner.intern("my$first$name", &["name", "first$name"]),
+            "name"
+        );
+        assert_eq!(
+            interner.intern("my$second$name", &["name", "second$name"]),
+            "second$name"
+        );
         assert_eq!(interner.intern("my$second$name", &[]), "second$name");
-        assert_eq!(interner.intern("my$first$name", &["name", "first$name"]), "name");
-        assert_eq!(interner.intern("my$third$name", &["name", "third$name"]), "third$name");
-        assert_eq!(interner.intern("another$second$name", &["name", "second$name"]), "another$second$name");
+        assert_eq!(
+            interner.intern("my$first$name", &["name", "first$name"]),
+            "name"
+        );
+        assert_eq!(
+            interner.intern("my$third$name", &["name", "third$name"]),
+            "third$name"
+        );
+        assert_eq!(
+            interner.intern("another$second$name", &["name", "second$name"]),
+            "another$second$name"
+        );
         assert_eq!(interner.intern("my$second$name", &[]), "second$name");
     }
 

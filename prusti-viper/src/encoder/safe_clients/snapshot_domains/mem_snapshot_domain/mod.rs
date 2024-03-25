@@ -8,10 +8,10 @@ mod from_layout;
 mod adt;
 use std::rc::Rc;
 
-use from_layout::*;
-pub use adt::*;
-use crate::encoder::safe_clients::prelude::*;
 use super::snapshot_builder::SnapshotBuilder;
+use crate::encoder::safe_clients::prelude::*;
+pub use adt::*;
+use from_layout::*;
 
 pub(super) const DOMAIN_NAME_PREFIX: &str = "MemorySnapshot";
 pub(super) const CONSTRUCTOR_NAME_PREFIX: &str = "new_memory_snap";
@@ -27,16 +27,25 @@ pub(super) fn field_function_name(ty_name: &str, field_name: &str) -> String {
     format!("{FIELD_NAME_PREFIX}_{field_name}_of_{ty_name}")
 }
 
-pub fn mem_snapshot_domain_name<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<String> {
+pub fn mem_snapshot_domain_name<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<String> {
     let ty_name = types::encode_type_name(encoder, ty)?;
     Ok(format!("{DOMAIN_NAME_PREFIX}${ty_name}"))
 }
 
-pub fn mem_snapshot_domain_type<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<vir::Type> {
+pub fn mem_snapshot_domain_type<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<vir::Type> {
     Ok(vir::Type::domain(mem_snapshot_domain_name(encoder, ty)?))
 }
 
-pub fn build_mem_snapshot_domain<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<vir::Domain> {
+pub fn build_mem_snapshot_domain<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<vir::Domain> {
     debug!("build_mem_snapshot_domain({:?})", ty);
     let layout = type_layout::build_layout(encoder, ty)?;
     build_mem_snapshot_domain_from_layout(encoder, ty, layout)
@@ -50,23 +59,31 @@ pub struct MemSnapshotDomain<'tcx> {
 
 impl<'tcx> MemSnapshotDomain<'tcx> {
     /// Returns the domain encoding a memory snapshot of the given type.
-    pub fn encode<'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<MemSnapshotDomain<'tcx>> {
+    pub fn encode<'v>(
+        encoder: &Encoder<'v, 'tcx>,
+        ty: ty::Ty<'tcx>,
+    ) -> EncodingResult<MemSnapshotDomain<'tcx>> {
         let domain = encoder.encode_builtin_domain(BuiltinDomainKind::MemorySnapshot(ty))?;
         Ok(Self::new(domain, ty, encoder.env().tcx()))
     }
 
     /// Wrap the generic domain encoding of a memory snapshot. Acts like a downcast.
-    pub fn new(domain: Rc<vir::Domain>, ty: ty::Ty<'tcx>, tcx: ty::TyCtxt<'tcx>) -> MemSnapshotDomain<'tcx> {
+    pub fn new(
+        domain: Rc<vir::Domain>,
+        ty: ty::Ty<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
+    ) -> MemSnapshotDomain<'tcx> {
         debug_assert!(domain.name.starts_with(DOMAIN_NAME_PREFIX));
-        MemSnapshotDomain {
-            ty,
-            domain,
-            tcx,
-        }
+        MemSnapshotDomain { ty, domain, tcx }
     }
 
     /// Private helper method to get a function from the domain.
-    pub(super) fn get_domain_function(&self, name: &str, index: usize, prefix: &str) -> EncodingResult<vir::DomainFunc> {
+    pub(super) fn get_domain_function(
+        &self,
+        name: &str,
+        index: usize,
+        prefix: &str,
+    ) -> EncodingResult<vir::DomainFunc> {
         let Some(func) = self.domain.functions.get(index) else {
             error_internal!(
                 "cannot find function for {} in domain of type {:?}:\n{:#?}",
@@ -127,11 +144,18 @@ impl<'tcx> SnapshotBuilder<'tcx> for MemSnapshotDomain<'tcx> {
         self.get_domain_function("content address", 1, FIELD_NAME_PREFIX)
     }
 
-    fn adt_constructor_function(&self, variant: Option<abi::VariantIdx>) -> EncodingResult<vir::DomainFunc> {
+    fn adt_constructor_function(
+        &self,
+        variant: Option<abi::VariantIdx>,
+    ) -> EncodingResult<vir::DomainFunc> {
         self.impl_adt_constructor_function(variant)
     }
 
-    fn adt_field_function(&self, variant: Option<abi::VariantIdx>, field: mir::Field) -> EncodingResult<vir::DomainFunc> {
+    fn adt_field_function(
+        &self,
+        variant: Option<abi::VariantIdx>,
+        field: mir::Field,
+    ) -> EncodingResult<vir::DomainFunc> {
         self.impl_adt_field_function(variant, field)
     }
 

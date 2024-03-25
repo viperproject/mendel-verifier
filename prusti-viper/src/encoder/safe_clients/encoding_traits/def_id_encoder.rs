@@ -4,15 +4,23 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::safe_clients::prelude::*;
+use crate::encoder::{mir::specifications::SpecificationsInterface, safe_clients::prelude::*};
 use prusti_interface::specs::typed::ProcedureSpecificationKind;
-use crate::encoder::mir::specifications::SpecificationsInterface;
 
 /// Trait used to encode items with a DefId.
 pub trait DefIdEncoder<'v, 'tcx: 'v>: WithDefId<'v, 'tcx> {
-    fn check_call(&self, called_def_id: DefId, call_substs: ty::SubstsRef<'tcx>, call_span: Span) -> SpannedEncodingResult<()> {
-        let self_kind = self.encoder().get_proc_kind(self.def_id(), Some(self.substs()));
-        let called_kind = self.encoder().get_proc_kind(called_def_id, Some(call_substs));
+    fn check_call(
+        &self,
+        called_def_id: DefId,
+        call_substs: ty::SubstsRef<'tcx>,
+        call_span: Span,
+    ) -> SpannedEncodingResult<()> {
+        let self_kind = self
+            .encoder()
+            .get_proc_kind(self.def_id(), Some(self.substs()));
+        let called_kind = self
+            .encoder()
+            .get_proc_kind(called_def_id, Some(call_substs));
         use ProcedureSpecificationKind::*;
         match (self_kind, called_kind) {
             // Good

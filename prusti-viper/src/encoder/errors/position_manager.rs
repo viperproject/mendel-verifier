@@ -4,12 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use vir_crate::polymorphic::Position;
-use rustc_hash::FxHashMap;
-use prusti_rustc_interface::span::source_map::SourceMap;
-use prusti_rustc_interface::errors::MultiSpan;
 use log::{debug, trace};
 use prusti_interface::data::ProcedureDefId;
+use prusti_rustc_interface::{errors::MultiSpan, span::source_map::SourceMap};
+use rustc_hash::FxHashMap;
+use vir_crate::polymorphic::Position;
 
 /// Mapping from VIR positions to the source code that generated them.
 /// One VIR position can be involved in multiple errors. If an error needs to refer to a special
@@ -24,8 +23,7 @@ pub struct PositionManager<'tcx> {
     pub(crate) source_span: FxHashMap<u64, MultiSpan>,
 }
 
-impl<'tcx> PositionManager<'tcx>
-{
+impl<'tcx> PositionManager<'tcx> {
     pub fn new(codemap: &'tcx SourceMap) -> Self {
         PositionManager {
             codemap,
@@ -35,16 +33,23 @@ impl<'tcx> PositionManager<'tcx>
         }
     }
 
-    pub fn register_span<T: Into<MultiSpan>>(&mut self, def_id: ProcedureDefId, span: T) -> Position {
+    pub fn register_span<T: Into<MultiSpan>>(
+        &mut self,
+        def_id: ProcedureDefId,
+        span: T,
+    ) -> Position {
         let span = span.into();
         let pos_id = self.next_pos_id;
         self.next_pos_id += 1;
-        trace!("Register position id {} for span {:?} in {:?}, ", pos_id, span, def_id);
+        trace!(
+            "Register position id {} for span {:?} in {:?}, ",
+            pos_id,
+            span,
+            def_id
+        );
 
         let pos = if let Some(primary_span) = span.primary_span() {
-            let lines_info_res = self
-                .codemap
-                .span_to_lines(primary_span.source_callsite());
+            let lines_info_res = self.codemap.span_to_lines(primary_span.source_callsite());
             match lines_info_res {
                 Ok(lines_info) => {
                     if let Some(first_line_info) = lines_info.lines.get(0) {
@@ -57,7 +62,10 @@ impl<'tcx> PositionManager<'tcx>
                     }
                 }
                 Err(e) => {
-                    debug!("Error converting primary span of position id {} to lines: {:?}", pos_id, e);
+                    debug!(
+                        "Error converting primary span of position id {} to lines: {:?}",
+                        pos_id, e
+                    );
                     Position::new(0, 0, pos_id)
                 }
             }

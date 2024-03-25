@@ -12,11 +12,15 @@ pub trait LocalAddressEncoder<'v, 'tcx: 'v>: WithMir<'v, 'tcx> {
         format!("{local:?}")
     }
 
-    fn encode_local_address_domain(&self, local: mir::Local) -> SpannedEncodingResult<AddressDomain<'tcx>> {
+    fn encode_local_address_domain(
+        &self,
+        local: mir::Local,
+    ) -> SpannedEncodingResult<AddressDomain<'tcx>> {
         let name = self.encode_local_name(local);
         let local_ty = self.get_local_ty(local);
         let local_span = self.get_local_span(local);
-        let address_domain = AddressDomain::encode(self.encoder(), local_ty).with_span(local_span)?;
+        let address_domain =
+            AddressDomain::encode(self.encoder(), local_ty).with_span(local_span)?;
         Ok(address_domain)
     }
 
@@ -25,7 +29,10 @@ pub trait LocalAddressEncoder<'v, 'tcx: 'v>: WithMir<'v, 'tcx> {
         let local_ty = self.get_local_ty(local);
         let local_span = self.get_local_span(local);
         let domain_kind = BuiltinDomainKind::Address(local_ty);
-        let typ = self.encoder().encode_builtin_domain_type(domain_kind).with_default_span(local_span)?;
+        let typ = self
+            .encoder()
+            .encode_builtin_domain_type(domain_kind)
+            .with_default_span(local_span)?;
         Ok(vir::LocalVar { name, typ })
     }
 }

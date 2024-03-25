@@ -9,7 +9,10 @@ use value_snapshot_domain::*;
 
 // ADT getters
 impl<'tcx> ValueSnapshotDomain<'tcx> {
-    pub(super) fn impl_adt_constructor_function(&self, variant: Option<abi::VariantIdx>) -> EncodingResult<vir::DomainFunc> {
+    pub(super) fn impl_adt_constructor_function(
+        &self,
+        variant: Option<abi::VariantIdx>,
+    ) -> EncodingResult<vir::DomainFunc> {
         let constructor_idx = match self.ty.kind() {
             _ if types::is_opaque_type(self.tcx, self.ty) => {
                 error_internal!("expected non-opaque type; got {:?}", self.ty);
@@ -31,7 +34,11 @@ impl<'tcx> ValueSnapshotDomain<'tcx> {
         self.get_domain_function(&debug_name, constructor_idx, CONSTRUCTOR_NAME_PREFIX)
     }
 
-    pub(super) fn impl_adt_field_function(&self, variant: Option<abi::VariantIdx>, field: mir::Field) -> EncodingResult<vir::DomainFunc> {
+    pub(super) fn impl_adt_field_function(
+        &self,
+        variant: Option<abi::VariantIdx>,
+        field: mir::Field,
+    ) -> EncodingResult<vir::DomainFunc> {
         trace!("adt_field_function {:?} {:?} {:?}", self.ty, variant, field);
         let field_idx = field.index();
         let destructor_idx = match self.ty.kind() {
@@ -54,7 +61,12 @@ impl<'tcx> ValueSnapshotDomain<'tcx> {
             }
             ty::TyKind::Adt(adt_def, _) if adt_def.is_enum() => {
                 let variant_idx = variant.map(|v| v.index()).unwrap_or(0);
-                let fields_before: usize = adt_def.variants().iter().take(variant_idx).map(|v| v.fields.len()).sum();
+                let fields_before: usize = adt_def
+                    .variants()
+                    .iter()
+                    .take(variant_idx)
+                    .map(|v| v.fields.len())
+                    .sum();
                 // constructors of the variants, then discriminant, then field getters
                 adt_def.variants().len() + 1 + fields_before + field_idx
             }
@@ -71,9 +83,7 @@ impl<'tcx> ValueSnapshotDomain<'tcx> {
             _ if types::is_opaque_type(self.tcx, self.ty) => {
                 error_internal!("expected non-opaque type; got {:?}", self.ty);
             }
-            ty::TyKind::Adt(adt_def, _) if adt_def.is_enum() => {
-                adt_def.variants().len()
-            }
+            ty::TyKind::Adt(adt_def, _) if adt_def.is_enum() => adt_def.variants().len(),
             _ => error_internal!("expected enum type; got {:?}", self.ty),
         };
 

@@ -4,9 +4,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::pure::interpreter::{BackwardMirInterpreter, run_backward_interpretation, run_backward_interpretation_point_to_point};
 use super::MirInterpreterState;
+use crate::encoder::{
+    mir::pure::interpreter::{
+        run_backward_interpretation, run_backward_interpretation_point_to_point,
+        BackwardMirInterpreter,
+    },
+    safe_clients::prelude::*,
+};
 
 /// Used to convert a MIR body to a `MirExpr`.
 pub struct MirInterpreter<'p, 'tcx: 'p> {
@@ -19,14 +24,8 @@ pub struct MirInterpreter<'p, 'tcx: 'p> {
 /// is exponential in the number of branches. If this becomes a problem, consider doing a forward
 /// encoding (keeping path conditions expressions).
 impl<'p, 'tcx: 'p> MirInterpreter<'p, 'tcx> {
-    pub fn new(
-        mir: &'p mir::Body<'tcx>,
-        tcx: ty::TyCtxt<'tcx>,
-    ) -> Self {
-        MirInterpreter {
-            mir,
-            tcx,
-        }
+    pub fn new(mir: &'p mir::Body<'tcx>, tcx: ty::TyCtxt<'tcx>) -> Self {
+        MirInterpreter { mir, tcx }
     }
 
     pub fn encode_body(&self) -> SpannedEncodingResult<MirExpr<'tcx>> {
@@ -40,7 +39,10 @@ impl<'p, 'tcx: 'p> MirInterpreter<'p, 'tcx> {
     }
 
     pub fn encode_point_to_point(
-        &self, final_expr: MirExpr<'tcx>, initial_bb: mir::BasicBlock, final_loc: mir::Location,
+        &self,
+        final_expr: MirExpr<'tcx>,
+        initial_bb: mir::BasicBlock,
+        final_loc: mir::Location,
     ) -> SpannedEncodingResult<MirExpr<'tcx>> {
         let result = run_backward_interpretation_point_to_point(
             self.mir,
@@ -61,9 +63,7 @@ impl<'p, 'tcx: 'p> MirInterpreter<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx: 'p> BackwardMirInterpreter<'tcx>
-    for MirInterpreter<'p, 'tcx>
-{
+impl<'p, 'tcx: 'p> BackwardMirInterpreter<'tcx> for MirInterpreter<'p, 'tcx> {
     type State = MirInterpreterState<'tcx>;
     type Error = SpannedEncodingError;
 
@@ -81,8 +81,7 @@ impl<'p, 'tcx: 'p> BackwardMirInterpreter<'tcx>
             mir::StatementKind::StorageLive(..)
             | mir::StatementKind::StorageDead(..)
             | mir::StatementKind::FakeRead(..)
-            | mir::StatementKind::AscribeUserType(..)
-             => {
+            | mir::StatementKind::AscribeUserType(..) => {
                 // Nothing to do
             }
 
@@ -93,7 +92,9 @@ impl<'p, 'tcx: 'p> BackwardMirInterpreter<'tcx>
                     );
                 }
                 let rhs_expr = RvalueExpr::from_rvalue(rhs, Some(span)).with_span(span)?;
-                state.replace_local(lhs.local, rhs_expr.into()).with_span(span)?;
+                state
+                    .replace_local(lhs.local, rhs_expr.into())
+                    .with_span(span)?;
             }
             _ => {
                 error_unsupported!(span => "unsupported statement '{:?}'", stmt);
@@ -132,11 +133,18 @@ impl<'p, 'tcx: 'p> BackwardMirInterpreter<'tcx>
                 lookup_target(target).cloned()
             }
 
-            &mir::TerminatorKind::DropAndReplace { place, ref value, target, .. } => {
+            &mir::TerminatorKind::DropAndReplace {
+                place,
+                ref value,
+                target,
+                ..
+            } => {
                 assert!(states.len() <= 2);
                 let rhs_expr = RvalueExpr::from_operand(value).with_span(span)?;
                 let mut state = MirInterpreterState::new(lookup_target(target).cloned());
-                state.replace_local(place.local, rhs_expr.into()).with_span(span)?;
+                state
+                    .replace_local(place.local, rhs_expr.into())
+                    .with_span(span)?;
                 state.into_expr()
             }
 
@@ -145,18 +153,14 @@ impl<'p, 'tcx: 'p> BackwardMirInterpreter<'tcx>
                 lookup_target(target).cloned()
             }
 
-            &mir::TerminatorKind::FalseEdge {
-                real_target, ..
-            } => {
+            &mir::TerminatorKind::FalseEdge { real_target, .. } => {
                 // Can be 1 for match guards (both targets point at the same block after some
                 // optimizations)
                 assert!(states.len() <= 2);
                 lookup_target(real_target).cloned()
             }
 
-            &mir::TerminatorKind::FalseUnwind {
-                real_target, ..
-            } => {
+            &mir::TerminatorKind::FalseUnwind { real_target, .. } => {
                 assert!(states.len() <= 1);
                 lookup_target(real_target).cloned()
             }
@@ -229,7 +233,9 @@ impl<'p, 'tcx: 'p> BackwardMirInterpreter<'tcx>
                         span: Some(span),
                         return_ty: destination.ty(self.mir, self.tcx).ty,
                     };
-                    state.replace_local(destination.local, rhs_expr).with_span(span)?;
+                    state
+                        .replace_local(destination.local, rhs_expr)
+                        .with_span(span)?;
                     state.into_expr()
                 } else {
                     // Diverging call

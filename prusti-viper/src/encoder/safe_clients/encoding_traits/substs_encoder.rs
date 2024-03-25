@@ -15,7 +15,10 @@ pub trait SubstsEncoder<'v, 'tcx: 'v>: WithDefId<'v, 'tcx> {
                 ty::subst::GenericArgKind::Type(ty) => Some(ty),
                 _ => None,
             })
-            .map(|ty| self.encoder().encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(ty)))
+            .map(|ty| {
+                self.encoder()
+                    .encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(ty))
+            })
             .collect::<Result<Vec<_>, _>>()
     }
 }

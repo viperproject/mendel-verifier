@@ -14,21 +14,15 @@ pub struct MirInterpreterState<'tcx> {
 
 impl<'tcx> MirInterpreterState<'tcx> {
     pub fn new(expr: Option<MirExpr<'tcx>>) -> Self {
-        MirInterpreterState {
-            expr,
-        }
+        MirInterpreterState { expr }
     }
 
     pub fn new_undefined() -> Self {
-        MirInterpreterState {
-            expr: None,
-        }
+        MirInterpreterState { expr: None }
     }
 
     pub fn new_defined(expr: MirExpr<'tcx>) -> Self {
-        MirInterpreterState {
-            expr: Some(expr),
-        }
+        MirInterpreterState { expr: Some(expr) }
     }
 
     pub fn expr(&self) -> Option<&MirExpr<'tcx>> {
@@ -49,7 +43,11 @@ impl<'tcx> MirInterpreterState<'tcx> {
         self.expr
     }
 
-    pub fn replace_local(&mut self, target: mir::Local, replacement: MirExpr<'tcx>) -> EncodingResult<()> {
+    pub fn replace_local(
+        &mut self,
+        target: mir::Local,
+        replacement: MirExpr<'tcx>,
+    ) -> EncodingResult<()> {
         trace!("replace {:?} --> {:?}", target, replacement);
         let visitor = |expr_local: mir::Local| -> EncodingResult<_> {
             if expr_local == target {

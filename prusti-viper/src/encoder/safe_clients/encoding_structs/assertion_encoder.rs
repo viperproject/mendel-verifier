@@ -4,8 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::pure::PureEncodingContext;
+use crate::encoder::{mir::pure::PureEncodingContext, safe_clients::prelude::*};
 
 /// Used to encode an assertion (i.e. pre/postcondition, loop invariant) to a `vir::Expr`.
 pub struct AssertionEncoder<'p, 'v: 'p, 'tcx: 'v> {
@@ -109,13 +108,21 @@ impl<'p, 'v: 'p, 'tcx: 'v> PlaceEncoder<'v, 'tcx> for AssertionEncoder<'p, 'v, '
         Ok(self.encoded_version.clone())
     }
 
-    fn encode_promoted_mir_expr_snapshot(&self, mir_expr: &MirExpr<'tcx>) -> EncodingResult<SnapshotExpr> {
+    fn encode_promoted_mir_expr_snapshot(
+        &self,
+        mir_expr: &MirExpr<'tcx>,
+    ) -> EncodingResult<SnapshotExpr> {
         self.encode_mir_expr_snapshot(mir_expr, GhostOrExec::Exec)
     }
 }
 
 impl<'p, 'v: 'p, 'tcx: 'v> MirExprEncoder<'v, 'tcx> for AssertionEncoder<'p, 'v, 'tcx> {
-    fn encode_failing_assertion(&self, msg: &mir::AssertMessage<'tcx>, domain_kind: BuiltinDomainKind<'tcx>, span: Span) -> SpannedEncodingResult<vir::Expr> {
+    fn encode_failing_assertion(
+        &self,
+        msg: &mir::AssertMessage<'tcx>,
+        domain_kind: BuiltinDomainKind<'tcx>,
+        span: Span,
+    ) -> SpannedEncodingResult<vir::Expr> {
         self.impl_encode_failing_assertion(msg, domain_kind, span)
     }
 
@@ -129,7 +136,15 @@ impl<'p, 'v: 'p, 'tcx: 'v> MirExprEncoder<'v, 'tcx> for AssertionEncoder<'p, 'v,
         span: Span,
         context: GhostOrExec,
     ) -> SpannedEncodingResult<SnapshotExpr> {
-        self.impl_encode_pure_function_call(called_def_id, call_substs, args, version, return_ty, span, context)
+        self.impl_encode_pure_function_call(
+            called_def_id,
+            call_substs,
+            args,
+            version,
+            return_ty,
+            span,
+            context,
+        )
     }
 }
 
@@ -138,7 +153,11 @@ impl<'p, 'v: 'p, 'tcx: 'v> SubstsEncoder<'v, 'tcx> for AssertionEncoder<'p, 'v, 
 impl<'p, 'v: 'p, 'tcx: 'v> WithOldMirExprEncoder<'v, 'tcx> for AssertionEncoder<'p, 'v, 'tcx> {
     fn old_mir_expr_encoder(&self) -> EncodingResult<&Self> {
         // In preconditions old(..) has no effect
-        Ok(self.old_encoder.as_ref().map(|e| e.as_ref()).unwrap_or(self))
+        Ok(self
+            .old_encoder
+            .as_ref()
+            .map(|e| e.as_ref())
+            .unwrap_or(self))
     }
 }
 

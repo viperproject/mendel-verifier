@@ -4,9 +4,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::mir::contracts::{ContractsEncoderInterface, ProcedureContractMirDef};
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::pure::PureEncodingContext;
+use crate::encoder::{
+    mir::{
+        contracts::{ContractsEncoderInterface, ProcedureContractMirDef},
+        pure::PureEncodingContext,
+    },
+    safe_clients::prelude::*,
+};
 
 /// Used to encode the contract (i.e. pre/postcondition) of a bodyless item (e.g. external items).
 pub struct BodylessEncoder<'p, 'v: 'p, 'tcx: 'v> {
@@ -42,9 +46,15 @@ impl<'p, 'v: 'p, 'tcx: 'v> BodylessEncoder<'p, 'v, 'tcx> {
         encoded_version: Option<vir::LocalVar>,
         old_encoder: Option<Box<BodylessEncoder<'p, 'v, 'tcx>>>,
     ) -> EncodingResult<Self> {
-        let sig = encoder.env().query.get_fn_sig_resolved(def_id, substs, caller_def_id);
+        let sig = encoder
+            .env()
+            .query
+            .get_fn_sig_resolved(def_id, substs, caller_def_id);
         let contract = encoder.get_mir_procedure_contract_for_def(def_id, substs)?;
-        debug_assert_eq!(encoded_locals.len(), sig.inputs_and_output().skip_binder().len());
+        debug_assert_eq!(
+            encoded_locals.len(),
+            sig.inputs_and_output().skip_binder().len()
+        );
         Ok(BodylessEncoder {
             encoder,
             def_id,
@@ -105,7 +115,10 @@ impl<'p, 'v: 'p, 'tcx: 'v> PlaceEncoder<'v, 'tcx> for BodylessEncoder<'p, 'v, 't
         Ok(self.encoded_version.clone())
     }
 
-    fn encode_promoted_mir_expr_snapshot(&self, mir_expr: &MirExpr<'tcx>) -> EncodingResult<SnapshotExpr> {
+    fn encode_promoted_mir_expr_snapshot(
+        &self,
+        mir_expr: &MirExpr<'tcx>,
+    ) -> EncodingResult<SnapshotExpr> {
         error_internal!("promoted MIR expressions are not supported in bodyless items")
     }
 }
@@ -113,7 +126,11 @@ impl<'p, 'v: 'p, 'tcx: 'v> PlaceEncoder<'v, 'tcx> for BodylessEncoder<'p, 'v, 't
 impl<'p, 'v: 'p, 'tcx: 'v> WithOldPlaceEncoder<'v, 'tcx> for BodylessEncoder<'p, 'v, 'tcx> {
     fn old_place_encoder(&self) -> EncodingResult<&Self> {
         // TODO: Return self instead of None, so that old(..) in a precondition has no effect.
-        Ok(self.old_encoder.as_ref().map(|e| e.as_ref()).unwrap_or(self))
+        Ok(self
+            .old_encoder
+            .as_ref()
+            .map(|e| e.as_ref())
+            .unwrap_or(self))
     }
 }
 

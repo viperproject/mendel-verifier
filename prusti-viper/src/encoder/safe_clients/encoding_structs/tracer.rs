@@ -4,11 +4,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::{io::Write, cell::RefCell, sync::atomic::{AtomicUsize, Ordering}};
-use prusti_common::report;
-use vir_crate::common::graphviz::escape_html;
 pub use crate::encoder::safe_clients::prelude::*;
-use std::cell::LazyCell;
+use prusti_common::report;
+use std::{
+    cell::{LazyCell, RefCell},
+    io::Write,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+use vir_crate::common::graphviz::escape_html;
 
 static TRACER_THREAD: AtomicUsize = AtomicUsize::new(0);
 thread_local! {
@@ -49,7 +52,9 @@ impl Tracer {
     pub fn new(namespace: &str, name: impl ToString) -> Self {
         let name = format!("{}.html", name.to_string());
         let writer = if config::dump_debug_info() {
-            Some(RefCell::new(report::log::build_writer(namespace, name.clone()).unwrap()))
+            Some(RefCell::new(
+                report::log::build_writer(namespace, name.clone()).unwrap(),
+            ))
         } else {
             None
         };
@@ -58,20 +63,23 @@ impl Tracer {
             open_calls: RefCell::new(vec![]),
             writer,
         };
-        this.write_header().unwrap_or_else(
-            |err| panic!("failed to write trace to {:?}: {:?}", this.name, err)
-        );
+        this.write_header()
+            .unwrap_or_else(|err| panic!("failed to write trace to {:?}: {:?}", this.name, err));
         this
     }
 
-    pub fn open(&self, context: impl ToString, function: impl ToString, args: impl ToString) -> TraceFrameId {
+    pub fn open(
+        &self,
+        context: impl ToString,
+        function: impl ToString,
+        args: impl ToString,
+    ) -> TraceFrameId {
         let mut open_calls = self.open_calls.borrow_mut();
         let frame_id = TraceFrameId(1 + open_calls.len());
         open_calls.push(frame_id.0);
         drop(open_calls);
-        self.write_open(context, function, args).unwrap_or_else(
-            |err| panic!("failed to write trace to {:?}: {:?}", self.name, err)
-        );
+        self.write_open(context, function, args)
+            .unwrap_or_else(|err| panic!("failed to write trace to {:?}: {:?}", self.name, err));
         frame_id
     }
 
@@ -79,9 +87,9 @@ impl Tracer {
         let mut open_calls = self.open_calls.borrow_mut();
         while open_calls.last().copied().iter().any(|&v| v > frame_id.0) {
             let frame = open_calls.pop();
-            self.write_close("<none> (unclosed)").unwrap_or_else(
-                |err| panic!("failed to write trace to {:?}: {:?}", self.name, err)
-            );
+            self.write_close("<none> (unclosed)").unwrap_or_else(|err| {
+                panic!("failed to write trace to {:?}: {:?}", self.name, err)
+            });
         }
         let Some(_) = open_calls.pop() else {
             error!(
@@ -91,9 +99,8 @@ impl Tracer {
             return;
         };
         drop(open_calls);
-        self.write_close(result).unwrap_or_else(
-            |err| panic!("failed to write trace to {:?}: {:?}", self.name, err)
-        );
+        self.write_close(result)
+            .unwrap_or_else(|err| panic!("failed to write trace to {:?}: {:?}", self.name, err));
     }
 
     fn write_header(&self) -> std::io::Result<()> {
@@ -101,7 +108,8 @@ impl Tracer {
             Some(ref w) => w.borrow_mut(),
             None => return Ok(()),
         };
-        writeln!(writer,
+        writeln!(
+            writer,
             "<style>\n\
             details.frame {{\n\
                 background-color: rgba(147, 193, 211, 0.075);\n\
@@ -118,19 +126,26 @@ impl Tracer {
             .context {{ display: none; }}\n\
             </style>"
         )?;
-        writeln!(writer,
+        writeln!(
+            writer,
             "<h1>Trace of <code>{}</code></h1>",
             escape_html(&self.name),
         )?;
         Ok(())
     }
 
-    fn write_open(&self, context: impl ToString, function: impl ToString, args: impl ToString) -> std::io::Result<()> {
+    fn write_open(
+        &self,
+        context: impl ToString,
+        function: impl ToString,
+        args: impl ToString,
+    ) -> std::io::Result<()> {
         let mut writer = match self.writer {
             Some(ref w) => w.borrow_mut(),
             None => return Ok(()),
         };
-        writeln!(writer,
+        writeln!(
+            writer,
             "<details class='frame'><summary>\
             <div class='context'>Context: <code>{}</code></div>\
             <div class='function'>Function: <code>{}</code></div>\
@@ -159,9 +174,9 @@ impl Drop for Tracer {
     fn drop(&mut self) {
         let mut open_calls = self.open_calls.borrow_mut();
         while open_calls.pop().is_some() {
-            self.write_close("<none>").unwrap_or_else(
-                |err| panic!("failed to write trace to {:?}: {:?}", self.name, err)
-            );
+            self.write_close("<none>").unwrap_or_else(|err| {
+                panic!("failed to write trace to {:?}: {:?}", self.name, err)
+            });
         }
     }
 }
@@ -171,9 +186,13 @@ macro_rules! open_trace {
     ($self:expr, $function:expr, $args:expr) => {{
         log::trace!("[open] {}: {}", $function, $args);
         if cfg!(debug_assertions) {
-            $crate::encoder::safe_clients::encoding_structs::TRACER.with(|t|
-                t.open(format!("{:?} {:?}", $self.def_id(), $self.substs()), $function, $args)
-            )
+            $crate::encoder::safe_clients::encoding_structs::TRACER.with(|t| {
+                t.open(
+                    format!("{:?} {:?}", $self.def_id(), $self.substs()),
+                    $function,
+                    $args,
+                )
+            })
         } else {
             $crate::encoder::safe_clients::encoding_structs::TraceFrameId::dummy()
         }
@@ -181,9 +200,8 @@ macro_rules! open_trace {
     ($function:expr, $args:expr) => {{
         log::trace!("[open] {}: {}", $function, $args);
         if cfg!(debug_assertions) {
-            $crate::encoder::safe_clients::encoding_structs::TRACER.with(|t|
-                t.open("<none>", $function, $args)
-            )
+            $crate::encoder::safe_clients::encoding_structs::TRACER
+                .with(|t| t.open("<none>", $function, $args))
         } else {
             $crate::encoder::safe_clients::encoding_structs::TraceFrameId::dummy()
         }
@@ -194,9 +212,8 @@ macro_rules! open_trace {
 macro_rules! close_trace {
     ($frame:expr, $result:expr) => {
         if cfg!(debug_assertions) {
-            $crate::encoder::safe_clients::encoding_structs::TRACER.with(
-                |t| t.close(&$frame, $result)
-            );
+            $crate::encoder::safe_clients::encoding_structs::TRACER
+                .with(|t| t.close(&$frame, $result));
         }
         std::mem::forget($frame);
     };

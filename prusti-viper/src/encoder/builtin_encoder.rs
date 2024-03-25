@@ -4,17 +4,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use super::{
+    errors::EncodingResult,
+    high::builtin_functions::HighBuiltinFunctionEncoderInterface,
+    safe_clients::{
+        address_domain, bump_version, ownership_domain,
+        snapshot_domains::{mem_snapshot_domain, value_snapshot_domain},
+        version_domain,
+    },
+};
 use log::debug;
+use prusti_common::{vir_expr, vir_local};
 use prusti_rustc_interface::middle::ty;
-use prusti_common::{vir_local, vir_expr};
-use vir_crate::polymorphic::{self as vir};
-use vir_crate::common::identifier::WithIdentifier;
-use super::errors::EncodingResult;
-use super::high::builtin_functions::HighBuiltinFunctionEncoderInterface;
-use super::safe_clients::{
-    bump_version, version_domain, address_domain,
-    snapshot_domains::{mem_snapshot_domain, value_snapshot_domain},
-    ownership_domain,
+use vir_crate::{
+    common::identifier::WithIdentifier,
+    polymorphic::{self as vir},
 };
 
 const PRIMITIVE_VALID_DOMAIN_NAME: &str = "PrimitiveValidDomain";
@@ -70,9 +74,7 @@ pub struct BuiltinEncoder<'p, 'v: 'p, 'tcx: 'v> {
 
 impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
     pub fn new(encoder: &'p super::Encoder<'v, 'tcx>) -> Self {
-        Self {
-            encoder
-        }
+        Self { encoder }
     }
 
     pub fn encode_builtin_method_name(&self, method: &BuiltinMethodKind) -> String {
@@ -81,13 +83,14 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
                 let ty_name = vir_ty.name();
                 format!("builtin$havoc_{ty_name}")
             }
-            BuiltinMethodKind::BumpVersion => {
-                bump_version::bump_version_method_name()
-            }
+            BuiltinMethodKind::BumpVersion => bump_version::bump_version_method_name(),
         }
     }
 
-    pub fn encode_builtin_method_def(&self, method: &BuiltinMethodKind) -> EncodingResult<vir::BodylessMethod> {
+    pub fn encode_builtin_method_def(
+        &self,
+        method: &BuiltinMethodKind,
+    ) -> EncodingResult<vir::BodylessMethod> {
         debug!("encode_builtin_method_def {:?}", method);
         match method {
             BuiltinMethodKind::Havoc(vir_ty) => {
@@ -95,20 +98,20 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
                 Ok(vir::BodylessMethod {
                     name: method_name,
                     formal_args: vec![],
-                    formal_returns: vec![vir_local!{ ret: {vir_ty.clone()} }],
+                    formal_returns: vec![vir_local! { ret: {vir_ty.clone()} }],
                     pres: vec![],
                     posts: vec![],
                 })
             }
-            BuiltinMethodKind::BumpVersion => {
-                bump_version::build_bump_version_method(self.encoder)
-            }
+            BuiltinMethodKind::BumpVersion => bump_version::build_bump_version_method(self.encoder),
         }
     }
 
     pub fn encode_builtin_function_def(&self, function: BuiltinFunctionKind) -> vir::Function {
         debug!("encode_builtin_function_def {:?}", function);
-        let (fn_name, type_arguments) = self.encoder.encode_builtin_function_name_with_type_args(&function);
+        let (fn_name, type_arguments) = self
+            .encoder
+            .encode_builtin_function_name_with_type_args(&function);
         match function {
             BuiltinFunctionKind::Unreachable(typ) => vir::Function {
                 name: fn_name,
@@ -129,9 +132,14 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
                 posts: vec![],
                 body: None,
             },
-            BuiltinFunctionKind::ArrayLookupPure { array_pred_type, array_len, return_ty, .. } => {
+            BuiltinFunctionKind::ArrayLookupPure {
+                array_pred_type,
+                array_len,
+                return_ty,
+                ..
+            } => {
                 let self_var = vir::LocalVar::new("self", array_pred_type.clone());
-                let idx_var = vir_local!{ idx: Int };
+                let idx_var = vir_local! { idx: Int };
 
                 vir::Function {
                     name: fn_name,
@@ -151,29 +159,32 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
                             vir::PermAmount::Read,
                         ),
                         // 0 <= idx < {len}
-                        vir_expr!{ [vir::Expr::from(0u32)] <= [vir::Expr::local(idx_var.clone())] },
-                        vir_expr!([vir::Expr::local(idx_var)]  < [vir::Expr::from(array_len)]),
+                        vir_expr! { [vir::Expr::from(0u32)] <= [vir::Expr::local(idx_var.clone())] },
+                        vir_expr!([vir::Expr::local(idx_var)] < [vir::Expr::from(array_len)]),
                     ],
                     posts: vec![],
                     body: None,
                 }
-            },
-            BuiltinFunctionKind::SliceLookupPure { slice_pred_type, elem_pred_type, return_ty} => {
-                let (slice_len, slice_len_type_arguments) = self.encoder.encode_builtin_function_name_with_type_args(
-                    &BuiltinFunctionKind::SliceLen { slice_pred_type: slice_pred_type.clone(), elem_pred_type }
-                );
+            }
+            BuiltinFunctionKind::SliceLookupPure {
+                slice_pred_type,
+                elem_pred_type,
+                return_ty,
+            } => {
+                let (slice_len, slice_len_type_arguments) = self
+                    .encoder
+                    .encode_builtin_function_name_with_type_args(&BuiltinFunctionKind::SliceLen {
+                        slice_pred_type: slice_pred_type.clone(),
+                        elem_pred_type,
+                    });
                 let self_var = vir::LocalVar::new("self", slice_pred_type.clone());
-                let idx_var = vir_local!{ idx: Int };
+                let idx_var = vir_local! { idx: Int };
 
                 let slice_len_call = vir::Expr::func_app(
                     slice_len,
                     slice_len_type_arguments,
-                    vec![
-                        vir::Expr::local(self_var.clone()),
-                    ],
-                    vec![
-                        self_var.clone(),
-                    ],
+                    vec![vir::Expr::local(self_var.clone())],
+                    vec![self_var.clone()],
                     vir::Type::Int,
                     vir::Position::default(),
                 );
@@ -181,10 +192,7 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
                 vir::Function {
                     name: fn_name,
                     type_arguments,
-                    formal_args: vec![
-                        self_var.clone(),
-                        idx_var.clone(),
-                    ],
+                    formal_args: vec![self_var.clone(), idx_var.clone()],
                     return_type: return_ty,
                     pres: vec![
                         // acc(self, read$())
@@ -194,79 +202,113 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
                             vir::PermAmount::Read,
                         ),
                         // 0 <= idx < Slice${ty}$len(self)
-                        vir_expr!{ [vir::Expr::from(0u32)] <= [vir::Expr::local(idx_var.clone())] },
-                        vir_expr!{ [vir::Expr::local(idx_var)] < [slice_len_call] },
+                        vir_expr! { [vir::Expr::from(0u32)] <= [vir::Expr::local(idx_var.clone())] },
+                        vir_expr! { [vir::Expr::local(idx_var)] < [slice_len_call] },
                     ],
                     posts: vec![],
                     body: None,
                 }
-            },
-            BuiltinFunctionKind::SliceLen { slice_pred_type, .. } => {
+            }
+            BuiltinFunctionKind::SliceLen {
+                slice_pred_type, ..
+            } => {
                 let self_var = vir::LocalVar::new("self", slice_pred_type.clone());
 
                 vir::Function {
                     name: fn_name,
                     type_arguments,
-                    formal_args: vec![
-                        self_var.clone(),
-                    ],
+                    formal_args: vec![self_var.clone()],
                     return_type: vir::Type::Int,
-                    pres: vec![
-                        vir::Expr::predicate_access_predicate(
-                            slice_pred_type,
-                            vir::Expr::local(self_var),
-                            vir::PermAmount::Read,
-                        ),
-                    ],
+                    pres: vec![vir::Expr::predicate_access_predicate(
+                        slice_pred_type,
+                        vir::Expr::local(self_var),
+                        vir::PermAmount::Read,
+                    )],
                     posts: vec![
-                        vir_expr!{ [vir::Expr::from(vir_local!{ __result: Int })] >= [vir::Expr::from(0)] },
+                        vir_expr! { [vir::Expr::from(vir_local!{ __result: Int })] >= [vir::Expr::from(0)] },
                         // TODO: We should use a symbolic value for usize::MAX.
-                        vir_expr!{ [vir::Expr::from(vir_local!{ __result: Int })] <= [vir::Expr::from(usize::MAX)] },
+                        vir_expr! { [vir::Expr::from(vir_local!{ __result: Int })] <= [vir::Expr::from(usize::MAX)] },
                     ],
                     body: None,
                 }
-            },
+            }
         }
     }
 
-    pub fn encode_builtin_domain_name(&self, kind: BuiltinDomainKind<'tcx>) -> EncodingResult<String> {
+    pub fn encode_builtin_domain_name(
+        &self,
+        kind: BuiltinDomainKind<'tcx>,
+    ) -> EncodingResult<String> {
         debug!("encode_builtin_domain_name {:?}", kind);
         Ok(match kind {
             BuiltinDomainKind::Nat => NAT_DOMAIN_NAME.to_string(),
             BuiltinDomainKind::Primitive => PRIMITIVE_VALID_DOMAIN_NAME.to_string(),
             BuiltinDomainKind::Version => version_domain::version_domain_name(),
-            BuiltinDomainKind::Address(ty) => address_domain::address_domain_name(self.encoder, ty)?,
-            BuiltinDomainKind::MemorySnapshot(ty) => mem_snapshot_domain::mem_snapshot_domain_name(self.encoder, ty)?,
-            BuiltinDomainKind::ValueSnapshot(ty) => value_snapshot_domain::value_snapshot_domain_name(self.encoder, ty)?,
-            BuiltinDomainKind::Ownership(ty) => ownership_domain::ownership_domain_name(self.encoder, ty)?,
+            BuiltinDomainKind::Address(ty) => {
+                address_domain::address_domain_name(self.encoder, ty)?
+            }
+            BuiltinDomainKind::MemorySnapshot(ty) => {
+                mem_snapshot_domain::mem_snapshot_domain_name(self.encoder, ty)?
+            }
+            BuiltinDomainKind::ValueSnapshot(ty) => {
+                value_snapshot_domain::value_snapshot_domain_name(self.encoder, ty)?
+            }
+            BuiltinDomainKind::Ownership(ty) => {
+                ownership_domain::ownership_domain_name(self.encoder, ty)?
+            }
         })
     }
 
-    pub fn encode_builtin_domain(&self, kind: BuiltinDomainKind<'tcx>) -> EncodingResult<vir::Domain> {
+    pub fn encode_builtin_domain(
+        &self,
+        kind: BuiltinDomainKind<'tcx>,
+    ) -> EncodingResult<vir::Domain> {
         debug!("encode_builtin_domain {:?}", kind);
         let domain = match kind {
             BuiltinDomainKind::Nat => self.encode_nat_builtin_domain(),
             BuiltinDomainKind::Primitive => self.encode_primitive_builtin_domain(),
             BuiltinDomainKind::Version => version_domain::build_version_domain(),
-            BuiltinDomainKind::Address(ty) => address_domain::build_address_domain(self.encoder, ty)?,
-            BuiltinDomainKind::MemorySnapshot(ty) => mem_snapshot_domain::build_mem_snapshot_domain(self.encoder, ty)?,
-            BuiltinDomainKind::ValueSnapshot(ty) => value_snapshot_domain::build_value_snapshot_domain(self.encoder, ty)?,
-            BuiltinDomainKind::Ownership(ty) => ownership_domain::build_ownership_domain(self.encoder, ty)?,
+            BuiltinDomainKind::Address(ty) => {
+                address_domain::build_address_domain(self.encoder, ty)?
+            }
+            BuiltinDomainKind::MemorySnapshot(ty) => {
+                mem_snapshot_domain::build_mem_snapshot_domain(self.encoder, ty)?
+            }
+            BuiltinDomainKind::ValueSnapshot(ty) => {
+                value_snapshot_domain::build_value_snapshot_domain(self.encoder, ty)?
+            }
+            BuiltinDomainKind::Ownership(ty) => {
+                ownership_domain::build_ownership_domain(self.encoder, ty)?
+            }
         };
-        debug_assert_eq!(domain.get_identifier(), self.encode_builtin_domain_name(kind)?);
+        debug_assert_eq!(
+            domain.get_identifier(),
+            self.encode_builtin_domain_name(kind)?
+        );
         Ok(domain)
     }
 
-    pub fn encode_builtin_domain_type(&self, kind: BuiltinDomainKind<'tcx>) -> EncodingResult<vir::Type> {
+    pub fn encode_builtin_domain_type(
+        &self,
+        kind: BuiltinDomainKind<'tcx>,
+    ) -> EncodingResult<vir::Type> {
         Ok(match kind {
             BuiltinDomainKind::Nat | BuiltinDomainKind::Primitive => {
                 vir::Type::domain(self.encode_builtin_domain(kind)?.name)
             }
             BuiltinDomainKind::Version => version_domain::version_domain_type(),
-            BuiltinDomainKind::Address(ty) => address_domain::address_domain_type(self.encoder, ty)?,
-            BuiltinDomainKind::MemorySnapshot(ty) => mem_snapshot_domain::mem_snapshot_domain_type(self.encoder, ty)?,
-            BuiltinDomainKind::ValueSnapshot(ty) => value_snapshot_domain::value_snapshot_domain_type(self.encoder, ty)?,
-            BuiltinDomainKind::Ownership(ty) => ownership_domain::ownership_domain_type(self.encoder, ty)?,
+            BuiltinDomainKind::Address(ty) => {
+                address_domain::address_domain_type(self.encoder, ty)?
+            }
+            BuiltinDomainKind::MemorySnapshot(ty) => {
+                mem_snapshot_domain::mem_snapshot_domain_type(self.encoder, ty)?
+            }
+            BuiltinDomainKind::ValueSnapshot(ty) => {
+                value_snapshot_domain::value_snapshot_domain_type(self.encoder, ty)?
+            }
+            BuiltinDomainKind::Ownership(ty) => {
+                ownership_domain::ownership_domain_type(self.encoder, ty)?
+            }
         })
     }
 
@@ -332,13 +374,14 @@ impl<'p, 'v: 'p, 'tcx: 'v> BuiltinEncoder<'p, 'v, 'tcx> {
             };
             functions.push(f.clone());
 
-            let forall_arg = vir_local!{ self: {t.clone()} };
+            let forall_arg = vir_local! { self: {t.clone()} };
             let function_app =
                 vir::Expr::domain_func_app(f.clone(), vec![vir::Expr::local(forall_arg.clone())]);
             let body = vir::Expr::forall(
                 vec![forall_arg],
                 vec![vir::Trigger::new(vec![function_app.clone()])],
-                function_app);
+                function_app,
+            );
             let axiom = vir::DomainAxiom {
                 comment: None,
                 name: format!("{}$axiom", f.get_identifier()),

@@ -12,9 +12,7 @@ pub trait WithLocalTy<'v, 'tcx: 'v>: WithEncoder<'v, 'tcx> {
     fn get_place_ty(&self, place: mir::Place<'tcx>) -> PlaceTy<'tcx> {
         place.projection.iter().fold(
             PlaceTy::from_ty(self.get_local_ty(place.local)),
-            |place_ty, elem| {
-                place_ty.projection_ty(self.tcx(), elem)
-            }
+            |place_ty, elem| place_ty.projection_ty(self.tcx(), elem),
         )
     }
 

@@ -76,32 +76,33 @@ impl<'tcx> RvalueExpr<'tcx> {
             &mir::Operand::Copy(place) | &mir::Operand::Move(place) => {
                 RvalueExpr::from_place(place)
             }
-            &mir::Operand::Constant(box constant) => {
-                RvalueExpr::Constant(constant)
-            }
+            &mir::Operand::Constant(box constant) => RvalueExpr::Constant(constant),
         })
     }
 
-    pub fn from_rvalue(rvalue: &mir::Rvalue<'tcx>, span: Option<Span>) -> EncodingResult<RvalueExpr<'tcx>> {
+    pub fn from_rvalue(
+        rvalue: &mir::Rvalue<'tcx>,
+        span: Option<Span>,
+    ) -> EncodingResult<RvalueExpr<'tcx>> {
         Ok(match rvalue {
-            mir::Rvalue::Use(ref operand) => {
-                RvalueExpr::from_operand(operand)?
-            }
+            mir::Rvalue::Use(ref operand) => RvalueExpr::from_operand(operand)?,
             mir::Rvalue::Aggregate(box kind, ref operands) => {
                 let mut fields = Vec::with_capacity(operands.len());
                 for operand in operands {
                     fields.push(RvalueExpr::from_operand(operand)?.into());
                 }
-                RvalueExpr::Aggregate { kind: kind.clone(), fields, span}
-            }
-            &mir::Rvalue::BinaryOp(op, box(ref left, ref right)) => {
-                RvalueExpr::BinaryOp {
-                    op,
-                    left: box RvalueExpr::from_operand(left)?.into(),
-                    right: box RvalueExpr::from_operand(right)?.into(),
+                RvalueExpr::Aggregate {
+                    kind: kind.clone(),
+                    fields,
                     span,
                 }
             }
+            &mir::Rvalue::BinaryOp(op, box (ref left, ref right)) => RvalueExpr::BinaryOp {
+                op,
+                left: box RvalueExpr::from_operand(left)?.into(),
+                right: box RvalueExpr::from_operand(right)?.into(),
+                span,
+            },
             &mir::Rvalue::CheckedBinaryOp(op, box (ref left, ref right)) => {
                 RvalueExpr::CheckedBinaryOp {
                     op,
@@ -110,42 +111,32 @@ impl<'tcx> RvalueExpr<'tcx> {
                     span,
                 }
             }
-            &mir::Rvalue::UnaryOp(op, ref operand) => {
-                RvalueExpr::UnaryOp {
-                    op,
-                    expr: box RvalueExpr::from_operand(operand)?.into(),
-                    span,
-                }
-            }
-            &mir::Rvalue::Discriminant(place) => {
-                RvalueExpr::Discriminant {
-                    expr: box RvalueExpr::from_place(place).into(),
-                    span,
-                }
-            }
-            &mir::Rvalue::Ref(region, borrow_kind, place) => {
-                RvalueExpr::Ref {
-                    expr: box RvalueExpr::from_place(place).into(),
-                    borrow_kind,
-                    region,
-                    span,
-                }
-            }
-            &mir::Rvalue::AddressOf(mutability, place) => {
-                RvalueExpr::AddressOf {
-                    expr: box RvalueExpr::from_place(place).into(),
-                    mutability,
-                    span,
-                }
-            }
-            &mir::Rvalue::Cast(kind, ref operand, ty) => {
-                RvalueExpr::Cast {
-                    expr: box RvalueExpr::from_operand(operand)?.into(),
-                    kind,
-                    ty,
-                    span,
-                }
-            }
+            &mir::Rvalue::UnaryOp(op, ref operand) => RvalueExpr::UnaryOp {
+                op,
+                expr: box RvalueExpr::from_operand(operand)?.into(),
+                span,
+            },
+            &mir::Rvalue::Discriminant(place) => RvalueExpr::Discriminant {
+                expr: box RvalueExpr::from_place(place).into(),
+                span,
+            },
+            &mir::Rvalue::Ref(region, borrow_kind, place) => RvalueExpr::Ref {
+                expr: box RvalueExpr::from_place(place).into(),
+                borrow_kind,
+                region,
+                span,
+            },
+            &mir::Rvalue::AddressOf(mutability, place) => RvalueExpr::AddressOf {
+                expr: box RvalueExpr::from_place(place).into(),
+                mutability,
+                span,
+            },
+            &mir::Rvalue::Cast(kind, ref operand, ty) => RvalueExpr::Cast {
+                expr: box RvalueExpr::from_operand(operand)?.into(),
+                kind,
+                ty,
+                span,
+            },
             _ => {
                 error_unsupported!("unsupported right-hand-side of assignment: {:?}", rvalue);
             }
@@ -171,8 +162,8 @@ impl<'tcx> RvalueExpr<'tcx> {
 
     /// Returns the type of the expression.
     pub fn ty<D>(&self, local_decls: &D, tcx: ty::TyCtxt<'tcx>) -> PlaceTy<'tcx>
-        where
-            D: mir::HasLocalDecls<'tcx>
+    where
+        D: mir::HasLocalDecls<'tcx>,
     {
         match self {
             RvalueExpr::Constant(c) => PlaceTy::from_ty(c.ty()),
@@ -181,44 +172,66 @@ impl<'tcx> RvalueExpr<'tcx> {
                 let base_ty = base.ty(local_decls, tcx);
                 projections
                     .iter()
-                    .fold(base_ty, |place_ty, &elem| {
-                        place_ty.projection_ty(tcx, elem)
-                    })
+                    .fold(base_ty, |place_ty, &elem| place_ty.projection_ty(tcx, elem))
             }
-            RvalueExpr::UnaryOp { expr, .. } => {
-                expr.ty(local_decls, tcx)
-            }
-            RvalueExpr::BinaryOp { left, right, op, .. } => {
+            RvalueExpr::UnaryOp { expr, .. } => expr.ty(local_decls, tcx),
+            RvalueExpr::BinaryOp {
+                left, right, op, ..
+            } => {
                 let left_ty = left.ty(local_decls, tcx).ty;
                 let right_ty = right.ty(local_decls, tcx).ty;
                 let op_ty = op.ty(tcx, left_ty, right_ty);
                 PlaceTy::from_ty(op_ty)
             }
-            RvalueExpr::CheckedBinaryOp { left, right, op, .. } => {
+            RvalueExpr::CheckedBinaryOp {
+                left, right, op, ..
+            } => {
                 let left_ty = left.ty(local_decls, tcx).ty;
                 let right_ty = right.ty(local_decls, tcx).ty;
                 let op_ty = op.ty(tcx, left_ty, right_ty);
                 let ty = tcx.intern_tup(&[op_ty, tcx.types.bool]);
                 PlaceTy::from_ty(ty)
             }
-            &RvalueExpr::Ref { ref expr, borrow_kind, region, .. } => {
+            &RvalueExpr::Ref {
+                ref expr,
+                borrow_kind,
+                region,
+                ..
+            } => {
                 let expr_ty = expr.ty(local_decls, tcx).ty;
-                let ty = tcx.mk_ref(region, ty::TypeAndMut { ty: expr_ty, mutbl: borrow_kind.to_mutbl_lossy() });
+                let ty = tcx.mk_ref(
+                    region,
+                    ty::TypeAndMut {
+                        ty: expr_ty,
+                        mutbl: borrow_kind.to_mutbl_lossy(),
+                    },
+                );
                 PlaceTy::from_ty(ty)
             }
-            &RvalueExpr::AddressOf { ref expr, mutability, .. } => {
+            &RvalueExpr::AddressOf {
+                ref expr,
+                mutability,
+                ..
+            } => {
                 let expr_ty = expr.ty(local_decls, tcx).ty;
-                let ty = tcx.mk_ptr(ty::TypeAndMut { ty: expr_ty, mutbl: mutability });
+                let ty = tcx.mk_ptr(ty::TypeAndMut {
+                    ty: expr_ty,
+                    mutbl: mutability,
+                });
                 PlaceTy::from_ty(ty)
             }
             RvalueExpr::Aggregate { kind, fields, .. } => {
                 let ty = match *kind {
                     mir::AggregateKind::Array(ty) => tcx.mk_array(ty, fields.len() as u64),
-                    mir::AggregateKind::Tuple => tcx.mk_tup(fields.iter().map(|f| f.ty(local_decls, tcx).ty)),
+                    mir::AggregateKind::Tuple => {
+                        tcx.mk_tup(fields.iter().map(|f| f.ty(local_decls, tcx).ty))
+                    }
                     mir::AggregateKind::Adt(did, _, substs, _, _) => {
                         tcx.bound_type_of(did).subst(tcx, substs)
                     }
-                    mir::AggregateKind::Closure(did, substs) => tcx.mk_closure(did.to_def_id(), substs),
+                    mir::AggregateKind::Closure(did, substs) => {
+                        tcx.mk_closure(did.to_def_id(), substs)
+                    }
                     mir::AggregateKind::Generator(did, substs, movability) => {
                         tcx.mk_generator(did.to_def_id(), substs, movability)
                     }
@@ -234,7 +247,10 @@ impl<'tcx> RvalueExpr<'tcx> {
     }
 
     /// Visits the direct `MirExpr` children of the expression.
-    pub fn visit_subexpr<E>(&self, visitor: &dyn Fn(&MirExpr<'tcx>) -> Result<(), E>) -> Result<(), E> {
+    pub fn visit_subexpr<E>(
+        &self,
+        visitor: &dyn Fn(&MirExpr<'tcx>) -> Result<(), E>,
+    ) -> Result<(), E> {
         match self {
             RvalueExpr::Constant(_) => {}
             RvalueExpr::Place(_) => {}
@@ -244,11 +260,19 @@ impl<'tcx> RvalueExpr<'tcx> {
             RvalueExpr::UnaryOp { expr, .. } => {
                 visitor(expr)?;
             }
-            RvalueExpr::BinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::BinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 visitor(lhs)?;
                 visitor(rhs)?;
             }
-            RvalueExpr::CheckedBinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::CheckedBinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 visitor(lhs)?;
                 visitor(rhs)?;
             }
@@ -274,7 +298,10 @@ impl<'tcx> RvalueExpr<'tcx> {
     }
 
     /// Visits the direct `MirExpr` children of the expression.
-    pub fn visit_subexpr_mut<E>(&mut self, visitor: &dyn Fn(&mut MirExpr<'tcx>) -> Result<(), E>) -> Result<(), E> {
+    pub fn visit_subexpr_mut<E>(
+        &mut self,
+        visitor: &dyn Fn(&mut MirExpr<'tcx>) -> Result<(), E>,
+    ) -> Result<(), E> {
         match self {
             RvalueExpr::Constant(_) => {}
             RvalueExpr::Place(_) => {}
@@ -284,11 +311,19 @@ impl<'tcx> RvalueExpr<'tcx> {
             RvalueExpr::UnaryOp { expr, .. } => {
                 visitor(expr)?;
             }
-            RvalueExpr::BinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::BinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 visitor(lhs)?;
                 visitor(rhs)?;
             }
-            RvalueExpr::CheckedBinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::CheckedBinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 visitor(lhs)?;
                 visitor(rhs)?;
             }
@@ -314,7 +349,10 @@ impl<'tcx> RvalueExpr<'tcx> {
     }
 
     /// Visits the direct `RvalueExpr` children of the expression.
-    pub fn visit_subrvalue_mut<E>(&mut self, visitor: &dyn Fn(&mut RvalueExpr<'tcx>) -> Result<(), E>) -> Result<(), E> {
+    pub fn visit_subrvalue_mut<E>(
+        &mut self,
+        visitor: &dyn Fn(&mut RvalueExpr<'tcx>) -> Result<(), E>,
+    ) -> Result<(), E> {
         match self {
             RvalueExpr::Constant(_) => {}
             RvalueExpr::Place(_) => {}
@@ -324,11 +362,19 @@ impl<'tcx> RvalueExpr<'tcx> {
             RvalueExpr::UnaryOp { expr, .. } => {
                 expr.visit_subrvalue_mut(visitor)?;
             }
-            RvalueExpr::BinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::BinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 lhs.visit_subrvalue_mut(visitor)?;
                 rhs.visit_subrvalue_mut(visitor)?;
             }
-            RvalueExpr::CheckedBinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::CheckedBinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 lhs.visit_subrvalue_mut(visitor)?;
                 rhs.visit_subrvalue_mut(visitor)?;
             }
@@ -354,7 +400,10 @@ impl<'tcx> RvalueExpr<'tcx> {
     }
 
     /// Visits all the `RvalueExpr` in the expression.
-    pub fn visit_all_rvalues<E>(&self, visitor: &mut dyn FnMut(&RvalueExpr<'tcx>) -> Result<(), E>) -> Result<(), E> {
+    pub fn visit_all_rvalues<E>(
+        &self,
+        visitor: &mut dyn FnMut(&RvalueExpr<'tcx>) -> Result<(), E>,
+    ) -> Result<(), E> {
         visitor(self)?;
         match self {
             RvalueExpr::Constant(_) => {}
@@ -365,11 +414,19 @@ impl<'tcx> RvalueExpr<'tcx> {
             RvalueExpr::UnaryOp { expr, .. } => {
                 expr.visit_all_rvalues(visitor)?;
             }
-            RvalueExpr::BinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::BinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 lhs.visit_all_rvalues(visitor)?;
                 rhs.visit_all_rvalues(visitor)?;
             }
-            RvalueExpr::CheckedBinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::CheckedBinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 lhs.visit_all_rvalues(visitor)?;
                 rhs.visit_all_rvalues(visitor)?;
             }
@@ -396,14 +453,23 @@ impl<'tcx> RvalueExpr<'tcx> {
 
     /// Collapse consecutive projections and simplify dereferentiations.
     pub fn normalize(&mut self) {
-        self.visit_subrvalue_mut::<()>(&|e| { e.normalize(); Ok(()) }).unwrap();
+        self.visit_subrvalue_mut::<()>(&|e| {
+            e.normalize();
+            Ok(())
+        })
+        .unwrap();
         loop {
             // Merge consecutive projections, but not `RvalueExpr::Place` because we want to know
             // which places directly come from an argument.
             if let RvalueExpr::Projections {
-                base: box MirExpr::Rvalue(RvalueExpr::Projections { base, projections: inner }),
+                base:
+                    box MirExpr::Rvalue(RvalueExpr::Projections {
+                        base,
+                        projections: inner,
+                    }),
                 projections: outer,
-            } = self {
+            } = self
+            {
                 let projections = inner.iter().copied().chain(outer.iter().copied()).collect();
                 *self = RvalueExpr::Projections {
                     base: base.clone(),
@@ -429,7 +495,10 @@ impl<'tcx> RvalueExpr<'tcx> {
     }
 
     /// Replaces all places in the expression with a new `MirExpr`.
-    pub fn replace_places<E>(&mut self, visitor: &dyn Fn(mir::Place<'tcx>) -> Result<Option<MirExpr<'tcx>>, E>) -> Result<(), E> {
+    pub fn replace_places<E>(
+        &mut self,
+        visitor: &dyn Fn(mir::Place<'tcx>) -> Result<Option<MirExpr<'tcx>>, E>,
+    ) -> Result<(), E> {
         match self {
             RvalueExpr::Constant(_) => {}
             &mut RvalueExpr::Place(place) => {
@@ -446,11 +515,19 @@ impl<'tcx> RvalueExpr<'tcx> {
             RvalueExpr::UnaryOp { expr, .. } => {
                 expr.replace_places(visitor)?;
             }
-            RvalueExpr::BinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::BinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 lhs.replace_places(visitor)?;
                 rhs.replace_places(visitor)?;
             }
-            RvalueExpr::CheckedBinaryOp { left: lhs, right: rhs, .. } => {
+            RvalueExpr::CheckedBinaryOp {
+                left: lhs,
+                right: rhs,
+                ..
+            } => {
                 lhs.replace_places(visitor)?;
                 rhs.replace_places(visitor)?;
             }
@@ -476,13 +553,19 @@ impl<'tcx> RvalueExpr<'tcx> {
     }
 
     /// Replaces all locals in the expression with a new `MirExpr`.
-    pub fn replace_locals<E>(&mut self, visitor: &dyn Fn(mir::Local) -> Result<Option<MirExpr<'tcx>>, E>) -> Result<(), E> {
+    pub fn replace_locals<E>(
+        &mut self,
+        visitor: &dyn Fn(mir::Local) -> Result<Option<MirExpr<'tcx>>, E>,
+    ) -> Result<(), E> {
         self.replace_places(&|place| {
             if let Some(new_expr) = visitor(place.local)? {
-                Ok(Some(RvalueExpr::Projections {
-                    base: box new_expr,
-                    projections: place.projection.iter().collect(),
-                }.into()))
+                Ok(Some(
+                    RvalueExpr::Projections {
+                        base: box new_expr,
+                        projections: place.projection.iter().collect(),
+                    }
+                    .into(),
+                ))
             } else {
                 Ok(None)
             }
@@ -493,7 +576,10 @@ impl<'tcx> RvalueExpr<'tcx> {
     pub fn as_place(&self, tcx: ty::TyCtxt<'tcx>) -> Option<mir::Place<'tcx>> {
         match self {
             &RvalueExpr::Place(place) => Some(place),
-            RvalueExpr::Projections { base: box MirExpr::Rvalue(base), projections } => {
+            RvalueExpr::Projections {
+                base: box MirExpr::Rvalue(base),
+                projections,
+            } => {
                 let mut place = base.as_place(tcx)?;
                 place = place.project_deeper(projections, tcx);
                 Some(place)
@@ -522,12 +608,32 @@ impl std::fmt::Display for RvalueExpr<'_> {
                 Ok(())
             }
             RvalueExpr::UnaryOp { op, expr, .. } => write!(f, "{op:?}({expr})"),
-            RvalueExpr::BinaryOp { op, left, right, .. } => write!(f, "{op:?}({left}, {right})"),
-            RvalueExpr::CheckedBinaryOp { op, left, right, .. } => write!(f, "Checked{op:?}({left}, {right})"),
-            RvalueExpr::Ref { expr, borrow_kind: mir::BorrowKind::Shared, .. } => write!(f, "{expr}.&"),
-            RvalueExpr::Ref { expr, borrow_kind: mir::BorrowKind::Shallow, .. } => write!(f, "{expr}.&shallow"),
-            RvalueExpr::Ref { expr, borrow_kind: mir::BorrowKind::Unique, .. } => write!(f, "{expr}.&unique"),
-            RvalueExpr::Ref { expr, borrow_kind: mir::BorrowKind::Mut { .. }, .. } => write!(f, "{expr}.&mut"),
+            RvalueExpr::BinaryOp {
+                op, left, right, ..
+            } => write!(f, "{op:?}({left}, {right})"),
+            RvalueExpr::CheckedBinaryOp {
+                op, left, right, ..
+            } => write!(f, "Checked{op:?}({left}, {right})"),
+            RvalueExpr::Ref {
+                expr,
+                borrow_kind: mir::BorrowKind::Shared,
+                ..
+            } => write!(f, "{expr}.&"),
+            RvalueExpr::Ref {
+                expr,
+                borrow_kind: mir::BorrowKind::Shallow,
+                ..
+            } => write!(f, "{expr}.&shallow"),
+            RvalueExpr::Ref {
+                expr,
+                borrow_kind: mir::BorrowKind::Unique,
+                ..
+            } => write!(f, "{expr}.&unique"),
+            RvalueExpr::Ref {
+                expr,
+                borrow_kind: mir::BorrowKind::Mut { .. },
+                ..
+            } => write!(f, "{expr}.&mut"),
             RvalueExpr::AddressOf { expr, .. } => write!(f, "{expr}.address"),
             RvalueExpr::Aggregate { kind, fields, .. } => {
                 write!(f, "{kind:?}(")?;

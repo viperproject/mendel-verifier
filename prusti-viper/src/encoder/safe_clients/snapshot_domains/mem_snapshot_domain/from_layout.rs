@@ -13,14 +13,20 @@ use type_layout::*;
 /// * A discriminant, if the type is an enum.
 /// * A destructor (aka getter) for each field, in the order of the variants.
 pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>, layout: TypeLayout<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+    layout: TypeLayout<'tcx>,
 ) -> EncodingResult<vir::Domain> {
-    trace!("build_mem_snapshot_domain_from_layout {ty:?} with {} variants", layout.variants.len());
+    trace!(
+        "build_mem_snapshot_domain_from_layout {ty:?} with {} variants",
+        layout.variants.len()
+    );
     let tcx = encoder.env().tcx();
     debug_assert!(types::is_opaque_type(tcx, ty) || ty.is_enum() || layout.variants.len() <= 1); // the never type has zero variants
     let ty_name = types::encode_type_name(encoder, ty)?;
     let domain_name = mem_snapshot_domain::mem_snapshot_domain_name(encoder, ty)?;
-    let mem_snapshot_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(ty))?;
+    let mem_snapshot_type =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(ty))?;
     let version_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::Version)?;
 
     // Build constructors
@@ -34,7 +40,11 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
         constructors.push(vir::DomainFunc::new(
             &domain_name,
             mem_snapshot_domain::constructor_function_name(&ty_name, &variant_component),
-            variant.fields.iter().map(|f| vir::LocalVar::new(&f.name, f.mem_snapshot_ty.clone())).collect(),
+            variant
+                .fields
+                .iter()
+                .map(|f| vir::LocalVar::new(&f.name, f.mem_snapshot_ty.clone()))
+                .collect(),
             mem_snapshot_type.clone(),
         ));
     }
@@ -45,7 +55,7 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
         discriminant.push(vir::DomainFunc::new(
             &domain_name,
             mem_snapshot_domain::field_function_name(&ty_name, "discriminant"),
-            vec![ vir_local!(snap: {mem_snapshot_type.clone()}) ],
+            vec![vir_local!(snap: {mem_snapshot_type.clone()})],
             vir::Type::Int,
         ));
     }
@@ -59,15 +69,18 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 variant_destructors.push(vir::DomainFunc::new(
                     &domain_name,
                     mem_snapshot_domain::field_function_name(&ty_name, &field.name),
-                    vec![ vir_local!(snap: {mem_snapshot_type.clone()}) ],
+                    vec![vir_local!(snap: {mem_snapshot_type.clone()})],
                     field.mem_snapshot_ty.clone(),
                 ));
             } else {
                 variant_destructors.push(vir::DomainFunc::new(
                     &domain_name,
                     // Ugly patch to disallow mentioning private fields in specifications
-                    format!("{}_ERROR_field_is_not_visible", mem_snapshot_domain::field_function_name(&ty_name, &field.name)),
-                    vec![ vir_local!(snap: {mem_snapshot_type.clone()}) ],
+                    format!(
+                        "{}_ERROR_field_is_not_visible",
+                        mem_snapshot_domain::field_function_name(&ty_name, &field.name)
+                    ),
+                    vec![vir_local!(snap: {mem_snapshot_type.clone()})],
                     field.mem_snapshot_ty.clone(),
                 ));
             }
@@ -89,20 +102,30 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 format!("memory_snapshot_valid_discriminants_of_{ty_name}"),
                 vir::Expr::forall(
                     vec![self_var],
-                    vec![ vir::Trigger::new(vec![discriminant_value.clone()]) ],
-                    layout.variants.iter().map(|variant|
-                        vir::Expr::eq_cmp(discriminant_value.clone(), variant.discriminant.clone())
-                    ).disjoin(),
+                    vec![vir::Trigger::new(vec![discriminant_value.clone()])],
+                    layout
+                        .variants
+                        .iter()
+                        .map(|variant| {
+                            vir::Expr::eq_cmp(
+                                discriminant_value.clone(),
+                                variant.discriminant.clone(),
+                            )
+                        })
+                        .disjoin(),
                 ),
             ));
         }
 
         // Define the discriminant of each variant
         for (variant_idx, variant) in layout.variants.iter().enumerate() {
-            let fields: Vec<_> = variant.fields.iter().map(|f|
-                vir::LocalVar::new(format!("f${}", f.name), f.mem_snapshot_ty.clone())
-            ).collect();
-            let construction = constructors[variant_idx].clone()
+            let fields: Vec<_> = variant
+                .fields
+                .iter()
+                .map(|f| vir::LocalVar::new(format!("f${}", f.name), f.mem_snapshot_ty.clone()))
+                .collect();
+            let construction = constructors[variant_idx]
+                .clone()
                 .apply(fields.iter().cloned().map(vir::Expr::from).collect());
 
             // Body of the axiom
@@ -114,7 +137,7 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
             if !fields.is_empty() {
                 body = vir::Expr::forall(
                     fields.clone(),
-                    vec![ vir::Trigger::new(vec![construction.clone()]) ],
+                    vec![vir::Trigger::new(vec![construction.clone()])],
                     body,
                 );
             }
@@ -141,30 +164,31 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 continue;
             }
 
-            let fields: Vec<_> = variant.fields.iter().enumerate().map(|(field_idx, _)|
-                destructors[variant_idx][field_idx].apply1(self_var.clone())
-            ).collect();
-            let mut triggers = vec![
-                vir::Trigger::new(vec![discriminant_value.clone()]),
-            ];
+            let fields: Vec<_> = variant
+                .fields
+                .iter()
+                .enumerate()
+                .map(|(field_idx, _)| destructors[variant_idx][field_idx].apply1(self_var.clone()))
+                .collect();
+            let mut triggers = vec![vir::Trigger::new(vec![discriminant_value.clone()])];
             for field in &fields {
                 triggers.push(vir::Trigger::new(vec![field.clone()]));
             }
             let construction = constructors[variant_idx].apply(fields);
             existence_axioms.push(vir::DomainAxiom::new(
                 &domain_name,
-                format!("Definition of the existence of the constructor of variant {}", variant.name),
+                format!(
+                    "Definition of the existence of the constructor of variant {}",
+                    variant.name
+                ),
                 format!("memory_snapshot_existence_of_{ty_name}_variant${variant_idx}"),
                 vir::Expr::forall(
                     vec![self_var.clone()],
                     triggers,
                     vir::Expr::implies(
                         vir::Expr::eq_cmp(discriminant_value.clone(), variant.discriminant.clone()),
-                        vir::Expr::eq_cmp(
-                            self_var.clone().into(),
-                            construction,
-                        )
-                    )
+                        vir::Expr::eq_cmp(self_var.clone().into(), construction),
+                    ),
                 ),
             ));
         }
@@ -180,9 +204,12 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 continue;
             }
 
-            let fields: Vec<_> = variant.fields.iter().enumerate().map(|(field_idx, _)|
-                destructors[variant_idx][field_idx].apply1(self_var.clone())
-            ).collect();
+            let fields: Vec<_> = variant
+                .fields
+                .iter()
+                .enumerate()
+                .map(|(field_idx, _)| destructors[variant_idx][field_idx].apply1(self_var.clone()))
+                .collect();
             let mut triggers = vec![];
             for field in &fields {
                 triggers.push(vir::Trigger::new(vec![field.clone()]));
@@ -190,15 +217,15 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
             let construction = constructors[variant_idx].apply(fields);
             existence_axioms.push(vir::DomainAxiom::new(
                 &domain_name,
-                format!("Definition of the existence of the constructor of variant {}", variant.name),
+                format!(
+                    "Definition of the existence of the constructor of variant {}",
+                    variant.name
+                ),
                 format!("memory_snapshot_existence_of_{ty_name}_variant${variant_idx}"),
                 vir::Expr::forall(
                     vec![self_var.clone()],
                     triggers,
-                    vir::Expr::eq_cmp(
-                        self_var.clone().into(),
-                        construction,
-                    )
+                    vir::Expr::eq_cmp(self_var.clone().into(), construction),
                 ),
             ));
         }
@@ -218,11 +245,14 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
             continue;
         }
 
-        let fields: Vec<_> = variant.fields.iter().map(|f|
-            vir::LocalVar::new(format!("f${}", f.name), f.mem_snapshot_ty.clone())
-        ).collect();
+        let fields: Vec<_> = variant
+            .fields
+            .iter()
+            .map(|f| vir::LocalVar::new(format!("f${}", f.name), f.mem_snapshot_ty.clone()))
+            .collect();
         let constructor = &constructors[variant_idx];
-        let construction = constructor.clone()
+        let construction = constructor
+            .clone()
             .apply(fields.iter().cloned().map(vir::Expr::from).collect());
         for (field_idx, field) in variant.fields.iter().enumerate() {
             let field_destructor = &destructors[variant_idx][field_idx];
@@ -233,12 +263,12 @@ pub(super) fn build_mem_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 format!("definition_of_{ty_name}_variant${variant_idx}_field${field_idx}"),
                 vir::Expr::forall(
                     fields.clone(),
-                    vec![ vir::Trigger::new(vec![construction.clone()]) ],
+                    vec![vir::Trigger::new(vec![construction.clone()])],
                     vir::Expr::eq_cmp(
                         field_destructor.apply1(construction.clone()),
                         field_var.into(),
                     ),
-                )
+                ),
             ));
         }
     }

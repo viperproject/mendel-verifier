@@ -6,13 +6,12 @@
 
 mod functions;
 
-use std::rc::Rc;
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::safe_clients::types::is_unsafe_cell;
-use prusti_interface::specs::typed;
-use strum::IntoEnumIterator;
-use strum_macros::{EnumIter, Display};
+use crate::encoder::safe_clients::{prelude::*, types::is_unsafe_cell};
 use functions::*;
+use prusti_interface::specs::typed;
+use std::rc::Rc;
+use strum::IntoEnumIterator;
+use strum_macros::{Display, EnumIter};
 
 pub(super) const DOMAIN_NAME_PREFIX: &str = "Ownership";
 pub(super) const OWNERSHIP_AT_FACT_PREFIX: &str = "owns_as_";
@@ -87,20 +86,23 @@ impl TryFrom<&str> for OwnershipKind {
 }
 
 pub fn ownership_domain_name<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>,
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<String> {
     let ty_name = types::encode_type_name(encoder, ty)?;
     Ok(format!("{DOMAIN_NAME_PREFIX}${ty_name}"))
 }
 
 pub fn ownership_domain_type<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>,
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<vir::Type> {
     Ok(vir::Type::domain(ownership_domain_name(encoder, ty)?))
 }
 
 pub fn build_ownership_domain<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>,
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<vir::Domain> {
     debug!("build_ownership_domain({:?})", ty);
     let ty_name = types::encode_type_name(encoder, ty)?;
@@ -132,18 +134,17 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                     let field_snapshot_domain = MemSnapshotDomain::encode(encoder, field_ty)?;
 
                     let base_deref_fn = base_address_domain.deref_function()?;
-                    let field_addr_fn = base_address_domain.adt_field_address_function(abi_variant, mir_field)?;
+                    let field_addr_fn =
+                        base_address_domain.adt_field_address_function(abi_variant, mir_field)?;
                     let field_deref_fn = field_address_domain.deref_function()?;
-                    let field_snap_fn = base_snapshot_domain.adt_field_function(abi_variant, mir_field)?;
+                    let field_snap_fn =
+                        base_snapshot_domain.adt_field_function(abi_variant, mir_field)?;
 
                     let version = vir::LocalVar::new("v", version_type.clone());
                     let base_addr = vir::LocalVar::new("base_addr", address_type.clone());
-                    let base_snapshot = base_deref_fn.apply2(
-                        base_addr.clone(), version.clone(),
-                    );
-                    let field_snap_1 = field_deref_fn.apply2(
-                        field_addr_fn.apply1(base_addr.clone()), version.clone(),
-                    );
+                    let base_snapshot = base_deref_fn.apply2(base_addr.clone(), version.clone());
+                    let field_snap_1 = field_deref_fn
+                        .apply2(field_addr_fn.apply1(base_addr.clone()), version.clone());
                     let field_snap_2 = field_snap_fn.apply1(base_snapshot.clone());
 
                     // This is not a matching loop because it doesn't follow raw pointers or references.
@@ -198,11 +199,14 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
         let version_2 = vir::LocalVar::new("v2", version_type.clone());
 
         // .is_primitive_ty() is a conservative approximation of .is_unpin(..)
-        if (left, right) == (OwnershipKind::WriteRef, OwnershipKind::Unique) && !ty.is_primitive_ty() {
+        if (left, right) == (OwnershipKind::WriteRef, OwnershipKind::Unique)
+            && !ty.is_primitive_ty()
+        {
             continue;
         }
 
-        { // At program point
+        {
+            // At program point
             let left_fact_fn = df.ownership_at_functions[left as usize].clone();
             let right_fact_fn = df.ownership_at_functions[right as usize].clone();
             let left_fact = left_fact_fn.apply3(root.clone(), address.clone(), version.clone());
@@ -220,15 +224,14 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                 body,
             ));
         }
-        { // Across stmt
+        {
+            // Across stmt
             let left_fact_fn = df.framing_across_stmt_functions[left as usize].clone();
             let right_fact_fn = df.framing_across_stmt_functions[right as usize].clone();
-            let left_fact = left_fact_fn.apply3(
-                address.clone(), version.clone(), version_2.clone(),
-            );
-            let right_fact = right_fact_fn.apply3(
-                address.clone(), version.clone(), version_2.clone(),
-            );
+            let left_fact =
+                left_fact_fn.apply3(address.clone(), version.clone(), version_2.clone());
+            let right_fact =
+                right_fact_fn.apply3(address.clone(), version.clone(), version_2.clone());
 
             let body = vir_expr!(
                 forall [address], [version], [version_2] ::
@@ -242,15 +245,14 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                 body,
             ));
         }
-        { // Across call
+        {
+            // Across call
             let left_fact_fn = df.framing_across_call_functions[left as usize].clone();
             let right_fact_fn = df.framing_across_call_functions[right as usize].clone();
-            let left_fact = left_fact_fn.apply3(
-                address.clone(), version.clone(), version_2.clone(),
-            );
-            let right_fact = right_fact_fn.apply3(
-                address.clone(), version.clone(), version_2.clone(),
-            );
+            let left_fact =
+                left_fact_fn.apply3(address.clone(), version.clone(), version_2.clone());
+            let right_fact =
+                right_fact_fn.apply3(address.clone(), version.clone(), version_2.clone());
 
             let body = vir_expr!(
                 forall [address], [version], [version_2] ::
@@ -286,11 +288,13 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
             let version = vir::LocalVar::new("v", version_type.clone());
             let version_2 = vir::LocalVar::new("v2", version_type.clone());
 
-            { // At program point
+            {
+                // At program point
                 let left_fact_fn = df.ownership_at_functions[left as usize].clone();
                 let right_fact_fn = df.ownership_at_functions[right as usize].clone();
                 let left_fact = left_fact_fn.apply3(root.clone(), address.clone(), version.clone());
-                let right_fact = right_fact_fn.apply3(other.clone(), address.clone(), version.clone());
+                let right_fact =
+                    right_fact_fn.apply3(other.clone(), address.clone(), version.clone());
                 let root_expr: vir::Expr = root.clone().into();
                 let other_expr: vir::Expr = other.clone().into();
 
@@ -372,10 +376,13 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
             None
         };
         let discriminant_condition = if ty.is_enum() {
-            let base_snapshot = address_domain.deref_function()?
+            let base_snapshot = address_domain
+                .deref_function()?
                 .apply2(address.clone(), version.clone());
-            let discr_value = snapshot_domain.discriminant_function()?.apply1(base_snapshot);
-            vir_expr!( [discr_value] == [variant.discriminant] )
+            let discr_value = snapshot_domain
+                .discriminant_function()?
+                .apply1(base_snapshot);
+            vir_expr!([discr_value] == [variant.discriminant])
         } else {
             true.into()
         };
@@ -405,10 +412,15 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                 let Some(field_kind) = field_view_function((base_kind, field.is_visible)) else {
                     continue;
                 };
-                { // At program point
-                    let base_fact = df.ownership_at_functions[base_kind as usize]
-                        .apply3(root.clone(), address.clone(), version.clone());
-                    let field_fact = field_ownership_domain.ownership_fact_function(field_kind)?
+                {
+                    // At program point
+                    let base_fact = df.ownership_at_functions[base_kind as usize].apply3(
+                        root.clone(),
+                        address.clone(),
+                        version.clone(),
+                    );
+                    let field_fact = field_ownership_domain
+                        .ownership_fact_function(field_kind)?
                         .apply3(root.clone(), field_address.clone(), version.clone());
                     let body = vir_expr!(
                         forall [root], [address], [version] ::
@@ -417,15 +429,26 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                     );
                     field_ownership_axioms.push(vir::DomainAxiom::new(
                         &domain_name,
-                        format!("Ownership of field {}: {base_kind} ==> {field_kind}", field.name),
-                        format!("ownership_of_field_{}_from_{base_kind}_of_{ty_name}", field.name,),
+                        format!(
+                            "Ownership of field {}: {base_kind} ==> {field_kind}",
+                            field.name
+                        ),
+                        format!(
+                            "ownership_of_field_{}_from_{base_kind}_of_{ty_name}",
+                            field.name,
+                        ),
                         body,
                     ));
                 }
-                { // Across stmt
-                    let base_fact = df.framing_across_stmt_functions[base_kind as usize]
-                        .apply3(address.clone(), version.clone(), version_2.clone());
-                    let field_fact = field_ownership_domain.framed_stmt_fact_function(field_kind)?
+                {
+                    // Across stmt
+                    let base_fact = df.framing_across_stmt_functions[base_kind as usize].apply3(
+                        address.clone(),
+                        version.clone(),
+                        version_2.clone(),
+                    );
+                    let field_fact = field_ownership_domain
+                        .framed_stmt_fact_function(field_kind)?
                         .apply3(field_address.clone(), version.clone(), version_2.clone());
                     let body = vir_expr!(
                         forall [address], [version], [version_2] ::
@@ -434,15 +457,26 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                     );
                     field_ownership_axioms.push(vir::DomainAxiom::new(
                         &domain_name,
-                        format!("Ownership across statement of field {}: {base_kind} ==> {field_kind}", field.name),
-                        format!("ownership_across_stmt_of_field_{}_from_{base_kind}_of_{ty_name}", field.name),
+                        format!(
+                            "Ownership across statement of field {}: {base_kind} ==> {field_kind}",
+                            field.name
+                        ),
+                        format!(
+                            "ownership_across_stmt_of_field_{}_from_{base_kind}_of_{ty_name}",
+                            field.name
+                        ),
                         body,
                     ));
                 }
-                { // Across call
-                    let base_fact = df.framing_across_call_functions[base_kind as usize]
-                        .apply3(address.clone(), version.clone(), version_2.clone());
-                    let field_fact = field_ownership_domain.framed_call_fact_function(field_kind)?
+                {
+                    // Across call
+                    let base_fact = df.framing_across_call_functions[base_kind as usize].apply3(
+                        address.clone(),
+                        version.clone(),
+                        version_2.clone(),
+                    );
+                    let field_fact = field_ownership_domain
+                        .framed_call_fact_function(field_kind)?
                         .apply3(field_address.clone(), version.clone(), version_2.clone());
                     let body = vir_expr!(
                         forall [address], [version], [version_2] ::
@@ -451,8 +485,14 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                     );
                     field_ownership_axioms.push(vir::DomainAxiom::new(
                         &domain_name,
-                        format!("Ownership across call of field {}: {base_kind} ==> {field_kind}", field.name),
-                        format!("ownership_across_call_of_field_{}_from_{base_kind}_of_{ty_name}", field.name),
+                        format!(
+                            "Ownership across call of field {}: {base_kind} ==> {field_kind}",
+                            field.name
+                        ),
+                        format!(
+                            "ownership_across_call_of_field_{}_from_{base_kind}_of_{ty_name}",
+                            field.name
+                        ),
                         body,
                     ));
                 }
@@ -480,12 +520,17 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
             CallOrStmt::Call => df.framing_across_call_functions[base_kind as usize].clone(),
             CallOrStmt::Stmt => df.framing_across_stmt_functions[base_kind as usize].clone(),
         };
-        let base_fact = base_fact_fn
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
-        let same_snap_fact = df.same_snap_fact_function
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
-        let same_id_fact = df.same_id_shallow_function
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
+        let base_fact = base_fact_fn.apply3(address.clone(), version_1.clone(), version_2.clone());
+        let same_snap_fact = df.same_snap_fact_function.apply3(
+            address.clone(),
+            version_1.clone(),
+            version_2.clone(),
+        );
+        let same_id_fact = df.same_id_shallow_function.apply3(
+            address.clone(),
+            version_1.clone(),
+            version_2.clone(),
+        );
         let body = vir_expr!(
             forall [address], [version_1], [version_2] ::
             { [base_fact.clone()] } ::
@@ -498,21 +543,30 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
             body,
         ));
     }
-    { //(CallOrStmt::Stmt, OwnershipKind::NoWriteRef && OwnershipKind::Local),
+    {
+        //(CallOrStmt::Stmt, OwnershipKind::NoWriteRef && OwnershipKind::Local),
         let root = vir::LocalVar::new("r", vir::Type::Int);
         let address = vir::LocalVar::new("a", address_type.clone());
         let version_1 = vir::LocalVar::new("v1", version_type.clone());
         let version_2 = vir::LocalVar::new("v2", version_type.clone());
-        let base_fact_fn_nwr = df.framing_across_stmt_functions[OwnershipKind::NoWriteRef as usize].clone();
-        let base_fact_fn_loc = df.framing_across_stmt_functions[OwnershipKind::Local as usize].clone();
-        let base_fact_nwr = base_fact_fn_nwr
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
-        let base_fact_loc = base_fact_fn_loc
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
-        let same_snap_fact = df.same_snap_fact_function
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
-        let same_id_fact = df.same_id_shallow_function
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
+        let base_fact_fn_nwr =
+            df.framing_across_stmt_functions[OwnershipKind::NoWriteRef as usize].clone();
+        let base_fact_fn_loc =
+            df.framing_across_stmt_functions[OwnershipKind::Local as usize].clone();
+        let base_fact_nwr =
+            base_fact_fn_nwr.apply3(address.clone(), version_1.clone(), version_2.clone());
+        let base_fact_loc =
+            base_fact_fn_loc.apply3(address.clone(), version_1.clone(), version_2.clone());
+        let same_snap_fact = df.same_snap_fact_function.apply3(
+            address.clone(),
+            version_1.clone(),
+            version_2.clone(),
+        );
+        let same_id_fact = df.same_id_shallow_function.apply3(
+            address.clone(),
+            version_1.clone(),
+            version_2.clone(),
+        );
         let body = vir_expr!(
             forall [address], [version_1], [version_2] ::
             { [base_fact_nwr], [base_fact_loc] } ::
@@ -531,11 +585,16 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
         let address = vir::LocalVar::new("a", address_type.clone());
         let version_1 = vir::LocalVar::new("v1", version_type.clone());
         let version_2 = vir::LocalVar::new("v2", version_type.clone());
-        let same_snap_fact = df.same_snap_fact_function
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
-        let snapshot_1 = address_domain.deref_function()?
+        let same_snap_fact = df.same_snap_fact_function.apply3(
+            address.clone(),
+            version_1.clone(),
+            version_2.clone(),
+        );
+        let snapshot_1 = address_domain
+            .deref_function()?
             .apply2(address.clone(), version_1.clone());
-        let snapshot_2 = address_domain.deref_function()?
+        let snapshot_2 = address_domain
+            .deref_function()?
             .apply2(address.clone(), version_2.clone());
         let body = vir_expr!(
             forall [address], [version_1], [version_2] ::
@@ -556,11 +615,16 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
         let address = vir::LocalVar::new("a", address_type.clone());
         let version_1 = vir::LocalVar::new("v1", version_type.clone());
         let version_2 = vir::LocalVar::new("v2", version_type.clone());
-        let same_id_fact = df.same_id_shallow_function
-            .apply3(address.clone(), version_1.clone(), version_2.clone());
-        let id_1 = address_domain.id_function()?
+        let same_id_fact = df.same_id_shallow_function.apply3(
+            address.clone(),
+            version_1.clone(),
+            version_2.clone(),
+        );
+        let id_1 = address_domain
+            .id_function()?
             .apply2(address.clone(), version_1.clone());
-        let id_2 = address_domain.id_function()?
+        let id_2 = address_domain
+            .id_function()?
             .apply2(address.clone(), version_2.clone());
         same_id_shallow_axioms.push(vir::DomainAxiom::new(
             &domain_name,
@@ -581,10 +645,13 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                     None
                 };
                 let discriminant_condition = if ty.is_enum() {
-                    let base_snapshot = address_domain.deref_function()?
+                    let base_snapshot = address_domain
+                        .deref_function()?
                         .apply2(address.clone(), version_1.clone());
-                    let discr_value = snapshot_domain.discriminant_function()?.apply1(base_snapshot);
-                    vir_expr!( [discr_value] == [variant.discriminant] )
+                    let discr_value = snapshot_domain
+                        .discriminant_function()?
+                        .apply1(base_snapshot);
+                    vir_expr!([discr_value] == [variant.discriminant])
                 } else {
                     true.into()
                 };
@@ -628,15 +695,23 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
         let version_1 = vir::LocalVar::new("v1", version_type.clone());
         let address_2 = vir::LocalVar::new("a2", address_type.clone());
         let version_2 = vir::LocalVar::new("v2", version_type.clone());
-        let move_fact = df.moved_fact_function
-            .apply4(address_1.clone(), version_1.clone(), address_2.clone(), version_2.clone());
-        let snapshot_1 = address_domain.deref_function()?
+        let move_fact = df.moved_fact_function.apply4(
+            address_1.clone(),
+            version_1.clone(),
+            address_2.clone(),
+            version_2.clone(),
+        );
+        let snapshot_1 = address_domain
+            .deref_function()?
             .apply2(address_1.clone(), version_1.clone());
-        let snapshot_2 = address_domain.deref_function()?
+        let snapshot_2 = address_domain
+            .deref_function()?
             .apply2(address_2.clone(), version_2.clone());
-        let id_1 = address_domain.id_function()?
+        let id_1 = address_domain
+            .id_function()?
             .apply2(address_1.clone(), version_1.clone());
-        let id_2 = address_domain.id_function()?
+        let id_2 = address_domain
+            .id_function()?
             .apply2(address_2.clone(), version_2.clone());
         moved_instance_axioms.push(vir::DomainAxiom::new(
             &domain_name,
@@ -656,10 +731,13 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                 None
             };
             let discriminant_condition = if ty.is_enum() {
-                let base_snapshot = address_domain.deref_function()?
+                let base_snapshot = address_domain
+                    .deref_function()?
                     .apply2(address_1.clone(), version_1.clone());
-                let discr_value = snapshot_domain.discriminant_function()?.apply1(base_snapshot);
-                vir_expr!( [discr_value] == [variant.discriminant] )
+                let discr_value = snapshot_domain
+                    .discriminant_function()?
+                    .apply1(base_snapshot);
+                vir_expr!([discr_value] == [variant.discriminant])
             } else {
                 true.into()
             };
@@ -677,9 +755,12 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                     .adt_field_address_function(abi_variant, mir_field)?
                     .apply1(address_2.clone());
                 let field_ownership_domain = OwnershipDomain::encode(encoder, field_ty)?;
-                let moved_field_fact = field_ownership_domain
-                    .moved_fact_function()?
-                    .apply4(field_address_1, version_1.clone(), field_address_2, version_2.clone());
+                let moved_field_fact = field_ownership_domain.moved_fact_function()?.apply4(
+                    field_address_1,
+                    version_1.clone(),
+                    field_address_2,
+                    version_2.clone(),
+                );
                 moved_fields.push(moved_field_fact);
             }
             let moved_fields_fact: vir::Expr = moved_fields.into_iter().conjoin();
@@ -708,13 +789,23 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
         let root = vir::LocalVar::new("r", vir::Type::Int);
         let address = vir::LocalVar::new("a", address_type.clone());
         let version = vir::LocalVar::new("v", version_type.clone());
-        let allocation_fact = df.ownership_at_functions[OwnershipKind::Allocated as usize]
-            .apply3(root.clone(), address.clone(), version.clone());
+        let allocation_fact = df.ownership_at_functions[OwnershipKind::Allocated as usize].apply3(
+            root.clone(),
+            address.clone(),
+            version.clone(),
+        );
         let target_address_domain = AddressDomain::encode(encoder, target_ty)?;
-        let ref_snapshot = address_domain.deref_function()?.apply2(address.clone(), version.clone());
-        let target_snapshot = snapshot_domain.target_snapshot_function()?.apply1(ref_snapshot.clone());
-        let target_address = snapshot_domain.target_address_function()?.apply1(ref_snapshot);
-        let target_deref = target_address_domain.deref_function()?
+        let ref_snapshot = address_domain
+            .deref_function()?
+            .apply2(address.clone(), version.clone());
+        let target_snapshot = snapshot_domain
+            .target_snapshot_function()?
+            .apply1(ref_snapshot.clone());
+        let target_address = snapshot_domain
+            .target_address_function()?
+            .apply1(ref_snapshot);
+        let target_deref = target_address_domain
+            .deref_function()?
             .apply2(target_address, version.clone());
         let body = vir_expr!(
             forall [root], [address], [version] ::
@@ -736,15 +827,19 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
         let address = vir::LocalVar::new("a", address_type.clone());
         let version_1 = vir::LocalVar::new("v1", version_type.clone());
         let version_2 = vir::LocalVar::new("v2", version_type.clone());
-        let snap_1 = address_domain.deref_function()?
+        let snap_1 = address_domain
+            .deref_function()?
             .apply2(address.clone(), version_1.clone());
-        let snap_2 = address_domain.deref_function()?
+        let snap_2 = address_domain
+            .deref_function()?
             .apply2(address.clone(), version_2.clone());
         let target_address_1 = snapshot_domain.target_address_function()?.apply1(snap_1);
         let target_address_2 = snapshot_domain.target_address_function()?.apply1(snap_2);
         // At program point: nothing
-        { // Across stmt
-            let shallow_ownership_fact = df.framing_across_stmt_functions[OwnershipKind::ShallowlyOwned as usize]
+        {
+            // Across stmt
+            let shallow_ownership_fact = df.framing_across_stmt_functions
+                [OwnershipKind::ShallowlyOwned as usize]
                 .apply3(address.clone(), version_1.clone(), version_2.clone());
             let body = vir_expr!(
                 forall [address], [version_1], [version_2] ::
@@ -758,8 +853,10 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                 body,
             ));
         }
-        { // Across call
-            let shallow_ownership_fact = df.framing_across_call_functions[OwnershipKind::ShallowlyOwned as usize]
+        {
+            // Across call
+            let shallow_ownership_fact = df.framing_across_call_functions
+                [OwnershipKind::ShallowlyOwned as usize]
                 .apply3(address.clone(), version_1.clone(), version_2.clone());
             let body = vir_expr!(
                 forall [address], [version_1], [version_2] ::
@@ -779,15 +876,19 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
         let address = vir::LocalVar::new("a", address_type);
         let version_1 = vir::LocalVar::new("v1", version_type.clone());
         let version_2 = vir::LocalVar::new("v2", version_type);
-        let snap_1 = address_domain.deref_function()?
+        let snap_1 = address_domain
+            .deref_function()?
             .apply2(address.clone(), version_1.clone());
-        let snap_2 = address_domain.deref_function()?
+        let snap_2 = address_domain
+            .deref_function()?
             .apply2(address.clone(), version_2.clone());
         let discriminant_1 = snapshot_domain.discriminant_function()?.apply1(snap_1);
         let discriminant_2 = snapshot_domain.discriminant_function()?.apply1(snap_2);
         // At program point: nothing
-        { // Across stmt
-            let unreachability_fact = df.framing_across_stmt_functions[OwnershipKind::ShallowlyOwned as usize]
+        {
+            // Across stmt
+            let unreachability_fact = df.framing_across_stmt_functions
+                [OwnershipKind::ShallowlyOwned as usize]
                 .apply3(address.clone(), version_1.clone(), version_2.clone());
             let body = vir_expr!(
                 forall [address], [version_1], [version_2] ::
@@ -801,8 +902,10 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
                 body,
             ));
         }
-        { // Across call
-            let unreachability_fact = df.framing_across_call_functions[OwnershipKind::ShallowlyOwned as usize]
+        {
+            // Across call
+            let unreachability_fact = df.framing_across_call_functions
+                [OwnershipKind::ShallowlyOwned as usize]
                 .apply3(address.clone(), version_1.clone(), version_2.clone());
             let body = vir_expr!(
                 forall [address], [version_1], [version_2] ::
@@ -824,8 +927,13 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
             df.ownership_at_functions,
             df.framing_across_stmt_functions,
             df.framing_across_call_functions,
-            vec![df.same_snap_fact_function, df.same_id_shallow_function, df.moved_fact_function],
-        ].concat(),
+            vec![
+                df.same_snap_fact_function,
+                df.same_id_shallow_function,
+                df.moved_fact_function,
+            ],
+        ]
+        .concat(),
         axioms: vec![
             snap_address_axioms,
             ownership_implication_axioms,
@@ -837,7 +945,8 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
             moved_instance_axioms,
             owning_types_axioms,
             shallow_ownership_axioms,
-        ].concat(),
+        ]
+        .concat(),
         type_vars: vec![],
     })
 }
@@ -849,7 +958,8 @@ pub struct OwnershipDomain {
 
 impl OwnershipDomain {
     pub fn encode<'tcx>(
-        encoder: &Encoder<'_, 'tcx>, ty: ty::Ty<'tcx>,
+        encoder: &Encoder<'_, 'tcx>,
+        ty: ty::Ty<'tcx>,
     ) -> EncodingResult<OwnershipDomain> {
         let domain_kind = BuiltinDomainKind::Ownership(ty);
         if encoder.is_encoding_builtin_domain(domain_kind)? {
@@ -870,7 +980,10 @@ impl OwnershipDomain {
 
     /// Private helper method to get a function from the domain.
     fn get_domain_function(
-        &self, name: &str, index: usize, prefix: &str,
+        &self,
+        name: &str,
+        index: usize,
+        prefix: &str,
     ) -> EncodingResult<vir::DomainFunc> {
         if let Some(domain) = self.domain.as_ref() {
             let Some(func) = domain.functions.get(index) else {
@@ -882,7 +995,9 @@ impl OwnershipDomain {
             debug_assert!(func.name.starts_with(prefix));
             return Ok(func.clone());
         } else if let Some(df) = self.functions.as_ref() {
-            let mut functions = df.ownership_at_functions.iter()
+            let mut functions = df
+                .ownership_at_functions
+                .iter()
                 .chain(df.framing_across_stmt_functions.iter())
                 .chain(df.framing_across_call_functions.iter())
                 .chain(std::iter::once(&df.same_snap_fact_function))
@@ -907,7 +1022,10 @@ impl OwnershipDomain {
     }
 
     /// Function that models that at least a Immutable ownership is framed across a statement.
-    pub fn framed_stmt_fact_function(&self, kind: OwnershipKind) -> EncodingResult<vir::DomainFunc> {
+    pub fn framed_stmt_fact_function(
+        &self,
+        kind: OwnershipKind,
+    ) -> EncodingResult<vir::DomainFunc> {
         let kind_idx = kind as usize;
         let debug_name = format!("framed stmt ownership kind {kind} ({kind_idx})");
         self.get_domain_function(
@@ -918,7 +1036,10 @@ impl OwnershipDomain {
     }
 
     /// Function that models that at least a Immutable ownership is framed across a call terminator.
-    pub fn framed_call_fact_function(&self, kind: OwnershipKind) -> EncodingResult<vir::DomainFunc> {
+    pub fn framed_call_fact_function(
+        &self,
+        kind: OwnershipKind,
+    ) -> EncodingResult<vir::DomainFunc> {
         let kind_idx = kind as usize;
         let debug_name = format!("framed call ownership kind {kind} ({kind_idx})");
         self.get_domain_function(

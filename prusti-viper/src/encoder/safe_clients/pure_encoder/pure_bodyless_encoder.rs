@@ -4,10 +4,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::mir::contracts::{ProcedureContractMirDef, ContractsEncoderInterface};
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::pure::PureEncodingContext;
 use super::CommonPureEncoder;
+use crate::encoder::{
+    mir::{
+        contracts::{ContractsEncoderInterface, ProcedureContractMirDef},
+        pure::PureEncodingContext,
+    },
+    safe_clients::prelude::*,
+};
 
 /// Used to encode a bodyless item (i.e. a trusted pure function) to a `vir::Function`.
 pub struct PureBodylessEncoder<'p, 'v: 'p, 'tcx: 'v> {
@@ -33,8 +37,12 @@ impl<'p, 'v: 'p, 'tcx: 'v> PureBodylessEncoder<'p, 'v, 'tcx> {
         substs: ty::SubstsRef<'tcx>,
         pure_encoding_context: PureEncodingContext,
     ) -> SpannedEncodingResult<Self> {
-        let sig = encoder.env().query.get_fn_sig_resolved(def_id, substs, caller_def_id);
-        let contract = encoder.get_mir_procedure_contract_for_def(def_id, substs)
+        let sig = encoder
+            .env()
+            .query
+            .get_fn_sig_resolved(def_id, substs, caller_def_id);
+        let contract = encoder
+            .get_mir_procedure_contract_for_def(def_id, substs)
             .with_span(encoder.env().tcx().def_span(def_id))?;
         Ok(PureBodylessEncoder {
             encoder,
@@ -48,7 +56,10 @@ impl<'p, 'v: 'p, 'tcx: 'v> PureBodylessEncoder<'p, 'v, 'tcx> {
     }
 
     pub fn encode_function(&self) -> SpannedEncodingResult<vir::Function> {
-        debug!("Encode trusted (bodyless) pure function {}", self.encode_name());
+        debug!(
+            "Encode trusted (bodyless) pure function {}",
+            self.encode_name()
+        );
         self.encode_function_given_body(None)
     }
 }
@@ -96,7 +107,10 @@ impl<'p, 'v: 'p, 'tcx: 'v> PlaceEncoder<'v, 'tcx> for PureBodylessEncoder<'p, 'v
         Ok(None)
     }
 
-    fn encode_promoted_mir_expr_snapshot(&self, mir_expr: &MirExpr<'tcx>) -> EncodingResult<SnapshotExpr> {
+    fn encode_promoted_mir_expr_snapshot(
+        &self,
+        mir_expr: &MirExpr<'tcx>,
+    ) -> EncodingResult<SnapshotExpr> {
         error_internal!("promoted MIR expressions are not supported in bodyless items")
     }
 }

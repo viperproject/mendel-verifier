@@ -4,18 +4,28 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::mir::pure::PureFunctionEncoderInterface;
-use crate::encoder::safe_clients::prelude::*;
+use crate::encoder::{mir::pure::PureFunctionEncoderInterface, safe_clients::prelude::*};
 
 /// Trait used to encode the snapshot of a call (pure stable/unstable, or impure).
-pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v, 'tcx> + DefIdEncoder<'v, 'tcx> + WithOldMirExprEncoder<'v, 'tcx> + Sized {
+pub trait CallEncoder<'v, 'tcx: 'v>:
+    MirExprEncoder<'v, 'tcx>
+    + SubstsEncoder<'v, 'tcx>
+    + DefIdEncoder<'v, 'tcx>
+    + WithOldMirExprEncoder<'v, 'tcx>
+    + Sized
+{
     fn is_prusti_pure(
-        &self, called_def_id: DefId, call_substs: ty::SubstsRef<'tcx>, arg_tys: &[ty::Ty<'tcx>],
+        &self,
+        called_def_id: DefId,
+        call_substs: ty::SubstsRef<'tcx>,
+        arg_tys: &[ty::Ty<'tcx>],
     ) -> bool {
         let full_func_proc_name = self.env().name.get_absolute_item_name(called_def_id);
         match full_func_proc_name.as_str() {
-            "std::cmp::PartialEq::eq" | "core::cmp::PartialEq::eq"
-            | "std::cmp::PartialEq::ne" | "core::cmp::PartialEq::ne" => {
+            "std::cmp::PartialEq::eq"
+            | "core::cmp::PartialEq::eq"
+            | "std::cmp::PartialEq::ne"
+            | "core::cmp::PartialEq::ne" => {
                 // TODO(fpoli): This is wrong, because `has_structural_eq_impl` doesn't actually
                 // check if the implementation is structural.
                 self.encoder().has_structural_eq_impl(arg_tys[0])
@@ -44,9 +54,7 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
             | "prusti_contracts::moved"
             | "prusti_contracts::local_capability"
             | "prusti_contracts::localRef_capability"
-            | "prusti_contracts::unique_capability" => {
-                true
-            }
+            | "prusti_contracts::unique_capability" => true,
 
             _ => false,
         }
@@ -63,11 +71,15 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
         context: GhostOrExec,
     ) -> SpannedEncodingResult<Option<SnapshotExpr>> {
         let frame = open_trace!(
-            self, "encode_prusti_function_call",
+            self,
+            "encode_prusti_function_call",
             format!("{called_def_id:?}, {call_substs:?}, {} args", args.len())
         );
         let full_func_proc_name = self.env().name.get_absolute_item_name(called_def_id);
-        let arg_tys: Vec<_> = args.iter().map(|arg| arg.ty(self.mir(), self.tcx()).ty).collect();
+        let arg_tys: Vec<_> = args
+            .iter()
+            .map(|arg| arg.ty(self.mir(), self.tcx()).ty)
+            .collect();
         if !self.is_prusti_pure(called_def_id, call_substs, &arg_tys) {
             return Ok(None);
         }
@@ -84,52 +96,78 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
             };
             Ok(stripped_arg)
         };
-        let encode_value_arg = |expr: &MirExpr<'tcx>, context: GhostOrExec| -> SpannedEncodingResult<vir::Expr> {
-            let encoded_expr = self.encode_mir_expr_snapshot(expr, context).with_default_span(span)?;
-            let converted_expr = self.convert_to_value_snapshot(
-                encoded_expr,
-                expr.ty(self.mir(), self.tcx()).ty,
-            ).with_default_span(span)?;
-            Ok(converted_expr)
-        };
-        let encode_memory_arg = |expr: &MirExpr<'tcx>, context: GhostOrExec| -> SpannedEncodingResult<vir::Expr> {
-            let encoded_expr = self.encode_mir_expr_snapshot(expr, context).with_default_span(span)?;
-            let converted_expr = self.convert_to_memory_snapshot(
-                encoded_expr,
-                expr.ty(self.mir(), self.tcx()).ty,
-            ).with_default_span(span)?;
-            Ok(converted_expr)
-        };
+        let encode_value_arg =
+            |expr: &MirExpr<'tcx>, context: GhostOrExec| -> SpannedEncodingResult<vir::Expr> {
+                let encoded_expr = self
+                    .encode_mir_expr_snapshot(expr, context)
+                    .with_default_span(span)?;
+                let converted_expr = self
+                    .convert_to_value_snapshot(encoded_expr, expr.ty(self.mir(), self.tcx()).ty)
+                    .with_default_span(span)?;
+                Ok(converted_expr)
+            };
+        let encode_memory_arg =
+            |expr: &MirExpr<'tcx>, context: GhostOrExec| -> SpannedEncodingResult<vir::Expr> {
+                let encoded_expr = self
+                    .encode_mir_expr_snapshot(expr, context)
+                    .with_default_span(span)?;
+                let converted_expr = self
+                    .convert_to_memory_snapshot(encoded_expr, expr.ty(self.mir(), self.tcx()).ty)
+                    .with_default_span(span)?;
+                Ok(converted_expr)
+            };
 
         let return_val = match full_func_proc_name.as_str() {
             "std::cmp::PartialEq::eq" | "core::cmp::PartialEq::eq"
-                if self.encoder().has_structural_eq_impl(args[0].ty(self.mir(), self.tcx()).ty) =>
+                if self
+                    .encoder()
+                    .has_structural_eq_impl(args[0].ty(self.mir(), self.tcx()).ty) =>
             {
                 assert_eq!(args.len(), 2);
-                vir::Expr::eq_cmp(encode_value_arg(&args[0], context)?, encode_value_arg(&args[1], context)?)
+                vir::Expr::eq_cmp(
+                    encode_value_arg(&args[0], context)?,
+                    encode_value_arg(&args[1], context)?,
+                )
             }
             _ if full_func_proc_name.ends_with(" as std::cmp::PartialEq>::eq") => {
                 assert_eq!(args.len(), 2);
-                vir::Expr::eq_cmp(encode_value_arg(&args[0], context)?, encode_value_arg(&args[1], context)?)
+                vir::Expr::eq_cmp(
+                    encode_value_arg(&args[0], context)?,
+                    encode_value_arg(&args[1], context)?,
+                )
             }
             _ if full_func_proc_name.ends_with(" as core::cmp::PartialEq>::eq") => {
                 assert_eq!(args.len(), 2);
-                vir::Expr::eq_cmp(encode_value_arg(&args[0], context)?, encode_value_arg(&args[1], context)?)
+                vir::Expr::eq_cmp(
+                    encode_value_arg(&args[0], context)?,
+                    encode_value_arg(&args[1], context)?,
+                )
             }
 
             "std::cmp::PartialEq::ne" | "core::cmp::PartialEq::ne"
-                if self.encoder().has_structural_eq_impl(args[0].ty(self.mir(), self.tcx()).ty) =>
+                if self
+                    .encoder()
+                    .has_structural_eq_impl(args[0].ty(self.mir(), self.tcx()).ty) =>
             {
                 assert_eq!(args.len(), 2);
-                vir::Expr::ne_cmp(encode_value_arg(&args[0], context)?, encode_value_arg(&args[1], context)?)
+                vir::Expr::ne_cmp(
+                    encode_value_arg(&args[0], context)?,
+                    encode_value_arg(&args[1], context)?,
+                )
             }
             _ if full_func_proc_name.ends_with(" as std::cmp::PartialEq>::ne") => {
                 assert_eq!(args.len(), 2);
-                vir::Expr::ne_cmp(encode_value_arg(&args[0], context)?, encode_value_arg(&args[1], context)?)
+                vir::Expr::ne_cmp(
+                    encode_value_arg(&args[0], context)?,
+                    encode_value_arg(&args[1], context)?,
+                )
             }
             _ if full_func_proc_name.ends_with(" as core::cmp::PartialEq>::ne") => {
                 assert_eq!(args.len(), 2);
-                vir::Expr::ne_cmp(encode_value_arg(&args[0], context)?, encode_value_arg(&args[1], context)?)
+                vir::Expr::ne_cmp(
+                    encode_value_arg(&args[0], context)?,
+                    encode_value_arg(&args[1], context)?,
+                )
             }
 
             "prusti_contracts::old" => {
@@ -152,8 +190,11 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
 
                 // Early return, otherwise the code will try to build a bool snapshot.
                 let old_encoder = self.old_mir_expr_encoder().with_default_span(span)?;
-                return Ok(Some(old_encoder.encode_mir_expr_snapshot(&args[0], GhostOrExec::Ghost)
-                    .with_default_span(span)?));
+                return Ok(Some(
+                    old_encoder
+                        .encode_mir_expr_snapshot(&args[0], GhostOrExec::Ghost)
+                        .with_default_span(span)?,
+                ));
             }
 
             "prusti_contracts::forall" | "prusti_contracts::exists" => {
@@ -171,14 +212,16 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
 
             "prusti_contracts::snap" => {
                 assert_eq!(args.len(), 1);
-                let encoded_arg = self.encode_mir_expr_snapshot(strip_ref(0)?, GhostOrExec::Ghost)
+                let encoded_arg = self
+                    .encode_mir_expr_snapshot(strip_ref(0)?, GhostOrExec::Ghost)
                     .with_default_span(span)?;
                 return Ok(Some(encoded_arg));
             }
 
             "prusti_contracts::check_mem" => {
                 assert_eq!(args.len(), 1);
-                let encoded_arg = self.encode_mir_expr_snapshot(&args[0], GhostOrExec::Ghost)
+                let encoded_arg = self
+                    .encode_mir_expr_snapshot(&args[0], GhostOrExec::Ghost)
                     .with_default_span(span)?;
                 if encoded_arg.kind().is_value() {
                     error_incorrect!(span =>
@@ -210,7 +253,8 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
                 let ptr_snap = encode_value_arg(&args[0], GhostOrExec::Ghost)?;
                 let ptr_addr = ValueSnapshotDomain::encode(self.encoder(), arg_tys[0])
                     .with_default_span(span)?
-                    .target_address_function().with_default_span(span)?
+                    .target_address_function()
+                    .with_default_span(span)?
                     .apply1(ptr_snap);
                 let Some(version) = self.encode_version().with_default_span(span)? else {
                     error_internal!(span =>
@@ -222,7 +266,8 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
                 };
                 AddressDomain::encode(self.encoder(), *target_ty)
                     .with_default_span(span)?
-                    .id_function().with_default_span(span)?
+                    .id_function()
+                    .with_default_span(span)?
                     .apply2(ptr_addr, version)
             }
 
@@ -251,9 +296,15 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
                     .moved_fact_function()
                     .with_default_span(span)?
                     .apply4(
-                        snap_domain.target_address_function().with_default_span(span)?.apply1(old_ptr),
+                        snap_domain
+                            .target_address_function()
+                            .with_default_span(span)?
+                            .apply1(old_ptr),
                         old_version,
-                        snap_domain.target_address_function().with_default_span(span)?.apply1(new_ptr),
+                        snap_domain
+                            .target_address_function()
+                            .with_default_span(span)?
+                            .apply1(new_ptr),
                         version,
                     )
             }
@@ -274,7 +325,9 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
                 let ty::TyKind::RawPtr(ty::TypeAndMut { ty: target_ty, .. }) = arg_tys[0].kind() else {
                     error_internal!(span => "expected raw pointer; got {:?}", arg_tys[0]);
                 };
-                let encoded_addr_type = self.encoder().encode_builtin_domain_type(BuiltinDomainKind::Address(*target_ty))
+                let encoded_addr_type = self
+                    .encoder()
+                    .encode_builtin_domain_type(BuiltinDomainKind::Address(*target_ty))
                     .with_default_span(span)?;
                 let Some(version) = self.encode_version().with_default_span(span)? else {
                     error_internal!(span =>
@@ -293,13 +346,9 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
                     .with_default_span(span)?
                     .ownership_fact_function(ownership_kind)
                     .with_default_span(span)?
-                    .apply3(
-                        free_root.clone(),
-                        free_addr.clone(),
-                        version,
-                    );
+                    .apply3(free_root.clone(), free_addr.clone(), version);
                 // There exist a root for the given address and version s.t. local_capability(..) holds
-                vir_expr!{
+                vir_expr! {
                     exists [free_root], [free_addr] ::
                     { [free_fact] } ::
                     ([free_fact] && ([vir::Expr::from(free_addr)] == [addr]))
@@ -316,10 +365,12 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
                 "prusti functions can only return primitive types; got {return_ty:?}"
             );
         }
-        let return_snapshot_domain = MemSnapshotDomain::encode(self.encoder(), return_ty)
-            .with_default_span(span)?;
-        let return_snapshot = return_snapshot_domain.constructor_function()
-            .with_default_span(span)?.apply1(return_val);
+        let return_snapshot_domain =
+            MemSnapshotDomain::encode(self.encoder(), return_ty).with_default_span(span)?;
+        let return_snapshot = return_snapshot_domain
+            .constructor_function()
+            .with_default_span(span)?
+            .apply1(return_val);
         close_trace!(self, frame, &return_snapshot);
         Ok(Some(SnapshotExpr::new_memory(return_snapshot)))
     }
@@ -337,7 +388,8 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
         context: GhostOrExec,
     ) -> SpannedEncodingResult<SnapshotExpr> {
         let frame = open_trace!(
-            self, "impl_encode_pure_function_call",
+            self,
+            "impl_encode_pure_function_call",
             format!("{called_def_id:?}, {call_substs:?}, {} args", args.len())
         );
         if let Some(expr) = self.encode_prusti_function_call(
@@ -353,12 +405,16 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
 
         self.check_call(called_def_id, call_substs, span)?;
 
-        let arg_tys: Vec<_> = args.iter().map(|arg| arg.ty(self.mir(), self.tcx()).ty).collect();
+        let arg_tys: Vec<_> = args
+            .iter()
+            .map(|arg| arg.ty(self.mir(), self.tcx()).ty)
+            .collect();
         let is_prusti_pure = self.is_prusti_pure(called_def_id, call_substs, &arg_tys);
         debug_assert!(!is_prusti_pure);
         let is_pure_stable = self.is_pure_stable(Some(self.def_id()), called_def_id, call_substs);
-        let is_pure_memory_or_unstable = self.is_pure_memory(Some(self.def_id()), called_def_id, call_substs)
-            || self.is_pure_unstable(Some(self.def_id()), called_def_id, call_substs);
+        let is_pure_memory_or_unstable =
+            self.is_pure_memory(Some(self.def_id()), called_def_id, call_substs)
+                || self.is_pure_unstable(Some(self.def_id()), called_def_id, call_substs);
         debug_assert!(!is_pure_stable || !is_pure_memory_or_unstable);
 
         // Encode arguments (formal and actual)
@@ -368,22 +424,31 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
 
         let mut encoded_snapshot_args = Vec::with_capacity(args.len());
         for arg in args {
-            encoded_snapshot_args.push(self.encode_mir_expr_snapshot(arg, context).with_span(span)?);
+            encoded_snapshot_args.push(
+                self.encode_mir_expr_snapshot(arg, context)
+                    .with_span(span)?,
+            );
         }
 
         if is_pure_stable {
             // Pure stable functions accept and return only value snapshots.
             // Prusti pure functions accept and return only value snapshots.
-            for (encoded_snapshot_arg, &arg_ty) in encoded_snapshot_args.drain(..).zip(arg_tys.iter()) {
-                let encoded_arg = self.convert_to_value_snapshot(encoded_snapshot_arg, arg_ty)
+            for (encoded_snapshot_arg, &arg_ty) in
+                encoded_snapshot_args.drain(..).zip(arg_tys.iter())
+            {
+                let encoded_arg = self
+                    .convert_to_value_snapshot(encoded_snapshot_arg, arg_ty)
                     .with_span(span)?;
                 encoded_args.push(encoded_arg);
             }
             snapshot_kind = SnapshotKind::Value;
         } else if is_pure_memory_or_unstable {
             // Pure memory and unstable functions accept and return only memory snapshots.
-            for (encoded_snapshot_arg, &arg_ty) in encoded_snapshot_args.drain(..).zip(arg_tys.iter()) {
-                let encoded_arg = self.convert_to_memory_snapshot(encoded_snapshot_arg, arg_ty)
+            for (encoded_snapshot_arg, &arg_ty) in
+                encoded_snapshot_args.drain(..).zip(arg_tys.iter())
+            {
+                let encoded_arg = self
+                    .convert_to_memory_snapshot(encoded_snapshot_arg, arg_ty)
                     .with_span(span)?;
                 encoded_args.push(encoded_arg);
             }
@@ -396,12 +461,13 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
         }
 
         for (arg_idx, &arg_ty) in arg_tys.iter().enumerate() {
-            let arg_type = self.encoder().encode_builtin_domain_type(
-                match snapshot_kind {
+            let arg_type = self
+                .encoder()
+                .encode_builtin_domain_type(match snapshot_kind {
                     SnapshotKind::Memory => BuiltinDomainKind::MemorySnapshot(arg_ty),
                     SnapshotKind::Value => BuiltinDomainKind::ValueSnapshot(arg_ty),
-                }
-            ).with_span(span)?;
+                })
+                .with_span(span)?;
             formal_args.push(vir::LocalVar::new(format!("x{arg_idx}"), arg_type));
         }
 
@@ -419,11 +485,10 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
             }
         }
 
-        let (function_name, return_type) = self.encoder().encode_pure_function_use(
-            called_def_id,
-            self.def_id(),
-            call_substs,
-        ).with_span(span)?;
+        let (function_name, return_type) = self
+            .encoder()
+            .encode_pure_function_use(called_def_id, self.def_id(), call_substs)
+            .with_span(span)?;
         let pos = self.register_error(span, ErrorCtxt::PureFunctionCall);
         let type_arguments = self.encode_substs(call_substs).with_span(self.span())?;
         let func_expr = vir::Expr::func_app(
@@ -459,12 +524,8 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
 
         // Prepare old bodyless encoder
         let old_encoder = self.old_mir_expr_encoder()?;
-        let mut old_encoded_locals = vec![
-            old_encoder.encode_place_snapshot(result)?
-        ];
-        let mut old_encoded_locals_address = vec![
-            old_encoder.encode_place_address(result)?
-        ];
+        let mut old_encoded_locals = vec![old_encoder.encode_place_snapshot(result)?];
+        let mut old_encoded_locals_address = vec![old_encoder.encode_place_address(result)?];
         for arg in args {
             let encoded_arg = old_encoder.encode_operand_snapshot(arg)?;
             old_encoded_locals.push(encoded_arg);
@@ -483,12 +544,8 @@ pub trait CallEncoder<'v, 'tcx: 'v>: MirExprEncoder<'v, 'tcx> + SubstsEncoder<'v
         )?);
 
         // Prepare bodyless encoder
-        let mut encoded_locals: Vec<SnapshotExpr> = vec![
-            self.encode_place_snapshot(result)?
-        ];
-        let mut encoded_locals_address = vec![
-            self.encode_place_address(result)?
-        ];
+        let mut encoded_locals: Vec<SnapshotExpr> = vec![self.encode_place_snapshot(result)?];
+        let mut encoded_locals_address = vec![self.encode_place_address(result)?];
         for arg in args {
             let encoded_arg = self.encode_operand_snapshot(arg)?;
             encoded_locals.push(encoded_arg);

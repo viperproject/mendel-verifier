@@ -4,21 +4,23 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+pub use crate::{
+    encoder::{
+        errors::{
+            EncodingError, EncodingResult, ErrorCtxt, SpannedEncodingError, SpannedEncodingResult,
+            WithSpan,
+        },
+        Encoder,
+    },
+    error_incorrect, error_internal, error_unsupported,
+};
+pub use log::{debug, info, trace};
+pub use prusti_common::{config, vir_expr, vir_local, vir_stmt, vir_type};
 pub use prusti_rustc_interface::{
-    middle::{ty, mir},
+    middle::{mir, ty},
     span::Span,
 };
 pub use vir_crate::polymorphic as vir;
-pub use crate::{error_internal, error_incorrect, error_unsupported};
-pub use crate::encoder::{
-    Encoder,
-    errors::{
-        EncodingResult, SpannedEncodingResult, EncodingError, SpannedEncodingError, ErrorCtxt,
-        WithSpan,
-    },
-};
-pub use log::{trace, debug, info};
-pub use prusti_common::{config, vir_type, vir_local, vir_expr, vir_stmt};
 
 /// Encode a binary operation given VIR expressions representing primitive Viper values.
 pub fn encode_bin_op_expr(
@@ -44,9 +46,9 @@ pub fn encode_bin_op_expr(
         mir::BinOp::BitAnd if is_bool => vir::Expr::and(left, right),
         mir::BinOp::BitOr if is_bool => vir::Expr::or(left, right),
         mir::BinOp::BitXor if is_bool => vir::Expr::xor(left, right),
-        mir::BinOp::BitAnd |
-        mir::BinOp::BitOr |
-        mir::BinOp::BitXor if !config::encode_bitvectors() => {
+        mir::BinOp::BitAnd | mir::BinOp::BitOr | mir::BinOp::BitXor
+            if !config::encode_bitvectors() =>
+        {
             error_unsupported!(
                 "bitwise operations on non-boolean types are experimental and disabled by \
                 default; use `encode_bitvectors` to enable"
@@ -181,11 +183,12 @@ pub fn encode_bin_op_check(
                     ty::TyKind::Int(ty::IntTy::I128) => 128,
                     ty::TyKind::Int(ty::IntTy::Isize) => {
                         error_unsupported!("unknown size of isize for the overflow check");
-                    },
+                    }
                     _ => {
                         error_unsupported!(
                             "overflow checks are unsupported for operation '{:?}' on type '{:?}'",
-                            op, ty,
+                            op,
+                            ty,
                         );
                     }
                 };

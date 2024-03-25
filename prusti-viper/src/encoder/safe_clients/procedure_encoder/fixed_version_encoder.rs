@@ -4,11 +4,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::rc::Rc;
-use crate::encoder::mir::pure::PureEncodingContext;
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::mir::contracts::{ProcedureContractMirDef, ContractsEncoderInterface};
 use super::local_address_encoder::LocalAddressEncoder;
+use crate::encoder::{
+    mir::{
+        contracts::{ContractsEncoderInterface, ProcedureContractMirDef},
+        pure::PureEncodingContext,
+    },
+    safe_clients::prelude::*,
+};
+use std::rc::Rc;
 
 /// Used to encode the snapshot of expressions at a fixed memory version.
 pub struct FixedVersionEncoder<'p, 'v: 'p, 'tcx: 'v> {
@@ -30,9 +34,10 @@ impl<'p, 'v: 'p, 'tcx: 'v> FixedVersionEncoder<'p, 'v, 'tcx> {
         mir: &'p mir::Body<'tcx>,
         substs: ty::SubstsRef<'tcx>,
         version: vir::LocalVar,
-        old_encoder: Option<Rc<FixedVersionEncoder<'p, 'v, 'tcx>>>
+        old_encoder: Option<Rc<FixedVersionEncoder<'p, 'v, 'tcx>>>,
     ) -> SpannedEncodingResult<Self> {
-        let contract = encoder.get_mir_procedure_contract_for_def(def_id, substs)
+        let contract = encoder
+            .get_mir_procedure_contract_for_def(def_id, substs)
             .with_span(mir.span)?;
         Ok(FixedVersionEncoder {
             encoder,
@@ -89,7 +94,10 @@ impl<'p, 'v: 'p, 'tcx: 'v> PlaceEncoder<'v, 'tcx> for FixedVersionEncoder<'p, 'v
         let local_span = self.get_local_span(local);
         let local_domain = self.encode_local_address_domain(local)?;
         let version: vir::Expr = self.version().clone().into();
-        let expr = local_domain.deref_function().with_span(local_span)?.apply2(local_addr, version);
+        let expr = local_domain
+            .deref_function()
+            .with_span(local_span)?
+            .apply2(local_addr, version);
         Ok(SnapshotExpr::new_memory(expr))
     }
 
@@ -101,13 +109,21 @@ impl<'p, 'v: 'p, 'tcx: 'v> PlaceEncoder<'v, 'tcx> for FixedVersionEncoder<'p, 'v
         Ok(Some(self.version().clone()))
     }
 
-    fn encode_promoted_mir_expr_snapshot(&self, mir_expr: &MirExpr<'tcx>) -> EncodingResult<SnapshotExpr> {
+    fn encode_promoted_mir_expr_snapshot(
+        &self,
+        mir_expr: &MirExpr<'tcx>,
+    ) -> EncodingResult<SnapshotExpr> {
         self.encode_mir_expr_snapshot(mir_expr, GhostOrExec::Exec)
     }
 }
 
 impl<'p, 'v: 'p, 'tcx: 'v> MirExprEncoder<'v, 'tcx> for FixedVersionEncoder<'p, 'v, 'tcx> {
-    fn encode_failing_assertion(&self, msg: &mir::AssertMessage<'tcx>, domain_kind: BuiltinDomainKind<'tcx>, span: Span) -> SpannedEncodingResult<vir::Expr> {
+    fn encode_failing_assertion(
+        &self,
+        msg: &mir::AssertMessage<'tcx>,
+        domain_kind: BuiltinDomainKind<'tcx>,
+        span: Span,
+    ) -> SpannedEncodingResult<vir::Expr> {
         self.impl_encode_failing_assertion(msg, domain_kind, span)
     }
 
@@ -121,7 +137,15 @@ impl<'p, 'v: 'p, 'tcx: 'v> MirExprEncoder<'v, 'tcx> for FixedVersionEncoder<'p, 
         span: Span,
         context: GhostOrExec,
     ) -> SpannedEncodingResult<SnapshotExpr> {
-        self.impl_encode_pure_function_call(called_def_id, call_substs, args, version, result_ty, span, context)
+        self.impl_encode_pure_function_call(
+            called_def_id,
+            call_substs,
+            args,
+            version,
+            result_ty,
+            span,
+            context,
+        )
     }
 }
 
@@ -130,14 +154,22 @@ impl<'p, 'v: 'p, 'tcx: 'v> SubstsEncoder<'v, 'tcx> for FixedVersionEncoder<'p, '
 impl<'p, 'v: 'p, 'tcx: 'v> WithOldPlaceEncoder<'v, 'tcx> for FixedVersionEncoder<'p, 'v, 'tcx> {
     fn old_place_encoder(&self) -> EncodingResult<&Self> {
         // In preconditions old(..) has no effect
-        Ok(self.old_encoder.as_ref().map(|e| e.as_ref()).unwrap_or(self))
+        Ok(self
+            .old_encoder
+            .as_ref()
+            .map(|e| e.as_ref())
+            .unwrap_or(self))
     }
 }
 
 impl<'p, 'v: 'p, 'tcx: 'v> WithOldMirExprEncoder<'v, 'tcx> for FixedVersionEncoder<'p, 'v, 'tcx> {
     fn old_mir_expr_encoder(&self) -> EncodingResult<&Self> {
         // In preconditions old(..) has no effect
-        Ok(self.old_encoder.as_ref().map(|e| e.as_ref()).unwrap_or(self))
+        Ok(self
+            .old_encoder
+            .as_ref()
+            .map(|e| e.as_ref())
+            .unwrap_or(self))
     }
 }
 

@@ -7,8 +7,8 @@
 mod from_layout;
 use std::rc::Rc;
 
-use from_layout::*;
 use crate::encoder::safe_clients::prelude::*;
+use from_layout::*;
 
 pub(super) const DOMAIN_NAME_PREFIX: &str = "Address";
 pub(super) const FIELD_NAME_PREFIX: &str = "get_addr";
@@ -36,16 +36,25 @@ pub(super) fn base_function_name(ty_name: &str, field_name: &str) -> String {
     format!("{BASE_NAME_PREFIX}_{field_name}_of_{ty_name}")
 }
 
-pub fn address_domain_name<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<String> {
+pub fn address_domain_name<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<String> {
     let ty_name = types::encode_type_name(encoder, ty)?;
     Ok(format!("{DOMAIN_NAME_PREFIX}${ty_name}"))
 }
 
-pub fn address_domain_type<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<vir::Type> {
+pub fn address_domain_type<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<vir::Type> {
     Ok(vir::Type::domain(address_domain_name(encoder, ty)?))
 }
 
-pub fn build_address_domain<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<vir::Domain> {
+pub fn build_address_domain<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<vir::Domain> {
     debug!("build_address_domain({ty:?})");
     let layout = type_layout::build_layout(encoder, ty)?;
     build_address_domain_from_layout(encoder, ty, layout)
@@ -59,23 +68,31 @@ pub struct AddressDomain<'tcx> {
 
 impl<'tcx> AddressDomain<'tcx> {
     /// Returns the domain encoding an address of the given type.
-    pub fn encode(encoder: &Encoder<'_, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<AddressDomain<'tcx>> {
+    pub fn encode(
+        encoder: &Encoder<'_, 'tcx>,
+        ty: ty::Ty<'tcx>,
+    ) -> EncodingResult<AddressDomain<'tcx>> {
         let domain = encoder.encode_builtin_domain(BuiltinDomainKind::Address(ty))?;
         Ok(Self::new(domain, ty, encoder.env().tcx()))
     }
 
     /// Wrap the generic domain encoding of an address. Acts like a downcast.
-    pub fn new(domain: Rc<vir::Domain>, ty: ty::Ty<'tcx>, tcx: ty::TyCtxt<'tcx>) -> AddressDomain<'tcx> {
+    pub fn new(
+        domain: Rc<vir::Domain>,
+        ty: ty::Ty<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
+    ) -> AddressDomain<'tcx> {
         debug_assert!(domain.name.starts_with(DOMAIN_NAME_PREFIX));
-        AddressDomain {
-            ty,
-            domain,
-            tcx,
-        }
+        AddressDomain { ty, domain, tcx }
     }
 
     /// Private helper method to get a function from the domain.
-    pub(super) fn get_domain_function(&self, name: &str, index: usize, prefix: &str) -> EncodingResult<vir::DomainFunc> {
+    pub(super) fn get_domain_function(
+        &self,
+        name: &str,
+        index: usize,
+        prefix: &str,
+    ) -> EncodingResult<vir::DomainFunc> {
         let Some(func) = self.domain.functions.get(index) else {
             error_internal!(
                 "cannot find function for {name} in domain of type {:?}:\n{:#?}",
@@ -110,7 +127,9 @@ impl<'tcx> AddressDomain<'tcx> {
 
     /// Get the function modeling the address of a field of an ADT.
     pub fn adt_field_address_function(
-        &self, variant: Option<abi::VariantIdx>, field: mir::Field
+        &self,
+        variant: Option<abi::VariantIdx>,
+        field: mir::Field,
     ) -> EncodingResult<vir::DomainFunc> {
         trace!("adt_field_function {:?} {:?} {:?}", self.ty, variant, field);
         let field_idx = field.index();
@@ -131,7 +150,12 @@ impl<'tcx> AddressDomain<'tcx> {
             }
             ty::TyKind::Adt(adt_def, _) if adt_def.is_enum() => {
                 let variant_idx = variant.map(|v| v.index()).unwrap_or(0);
-                let fields_before: usize = adt_def.variants().iter().take(variant_idx).map(|v| v.fields.len()).sum();
+                let fields_before: usize = adt_def
+                    .variants()
+                    .iter()
+                    .take(variant_idx)
+                    .map(|v| v.fields.len())
+                    .sum();
                 // deref, then fields
                 2 + fields_before + field_idx
             }

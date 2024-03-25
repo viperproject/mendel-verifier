@@ -49,28 +49,30 @@ impl<'tcx> MirExpr<'tcx> {
 
     /// Returns the type of the expression.
     pub fn ty<D>(&self, local_decls: &D, tcx: ty::TyCtxt<'tcx>) -> PlaceTy<'tcx>
-        where
-            D: mir::HasLocalDecls<'tcx>
+    where
+        D: mir::HasLocalDecls<'tcx>,
     {
         match self {
             MirExpr::Rvalue(rvalue) => rvalue.ty(local_decls, tcx),
-            MirExpr::Switch { default_expr, .. } => {
-                default_expr.ty(local_decls, tcx)
-            }
-            &MirExpr::Call { return_ty, .. } => {
-                PlaceTy::from_ty(return_ty)
-            },
-            MirExpr::Assert { then, .. } => {
-                then.ty(local_decls, tcx)
-            }
+            MirExpr::Switch { default_expr, .. } => default_expr.ty(local_decls, tcx),
+            &MirExpr::Call { return_ty, .. } => PlaceTy::from_ty(return_ty),
+            MirExpr::Assert { then, .. } => then.ty(local_decls, tcx),
         }
     }
 
     /// Visits the direct `MirExpr` children of the expression.
-    pub fn visit_subexpr<E>(&self, visitor: &dyn Fn(&MirExpr<'tcx>) -> Result<(), E>) -> Result<(), E> {
+    pub fn visit_subexpr<E>(
+        &self,
+        visitor: &dyn Fn(&MirExpr<'tcx>) -> Result<(), E>,
+    ) -> Result<(), E> {
         match self {
             MirExpr::Rvalue(rvalue) => rvalue.visit_subexpr(visitor)?,
-            MirExpr::Switch { box discr, guarded_exprs, default_expr, .. } => {
+            MirExpr::Switch {
+                box discr,
+                guarded_exprs,
+                default_expr,
+                ..
+            } => {
                 visitor(discr)?;
                 for (_, expr) in guarded_exprs {
                     visitor(expr)?;
@@ -91,10 +93,18 @@ impl<'tcx> MirExpr<'tcx> {
     }
 
     /// Visits the direct `MirExpr` children of the expression.
-    pub fn visit_subexpr_mut<E>(&mut self, visitor: &dyn Fn(&mut MirExpr<'tcx>) -> Result<(), E>) -> Result<(), E> {
+    pub fn visit_subexpr_mut<E>(
+        &mut self,
+        visitor: &dyn Fn(&mut MirExpr<'tcx>) -> Result<(), E>,
+    ) -> Result<(), E> {
         match self {
             MirExpr::Rvalue(rvalue) => rvalue.visit_subexpr_mut(visitor)?,
-            MirExpr::Switch { box discr, guarded_exprs, default_expr, .. } => {
+            MirExpr::Switch {
+                box discr,
+                guarded_exprs,
+                default_expr,
+                ..
+            } => {
                 visitor(discr)?;
                 for (_, expr) in guarded_exprs {
                     visitor(expr)?;
@@ -115,10 +125,18 @@ impl<'tcx> MirExpr<'tcx> {
     }
 
     /// Visits all `RvalueExpr` in the expression.
-    pub fn visit_all_rvalues<E>(&self, visitor: &mut dyn FnMut(&RvalueExpr<'tcx>) -> Result<(), E>) -> Result<(), E> {
+    pub fn visit_all_rvalues<E>(
+        &self,
+        visitor: &mut dyn FnMut(&RvalueExpr<'tcx>) -> Result<(), E>,
+    ) -> Result<(), E> {
         match self {
             MirExpr::Rvalue(rvalue) => rvalue.visit_all_rvalues(visitor)?,
-            MirExpr::Switch { discr, guarded_exprs, default_expr, .. } => {
+            MirExpr::Switch {
+                discr,
+                guarded_exprs,
+                default_expr,
+                ..
+            } => {
                 discr.visit_all_rvalues(visitor)?;
                 for (_, expr) in guarded_exprs {
                     expr.visit_all_rvalues(visitor)?;
@@ -139,10 +157,18 @@ impl<'tcx> MirExpr<'tcx> {
     }
 
     /// Visits the direct `RvalueExpr` children of the expression.
-    pub fn visit_subrvalue_mut<E>(&mut self, visitor: &dyn Fn(&mut RvalueExpr<'tcx>) -> Result<(), E>) -> Result<(), E> {
+    pub fn visit_subrvalue_mut<E>(
+        &mut self,
+        visitor: &dyn Fn(&mut RvalueExpr<'tcx>) -> Result<(), E>,
+    ) -> Result<(), E> {
         match self {
             MirExpr::Rvalue(rvalue) => visitor(rvalue)?,
-            MirExpr::Switch { discr, guarded_exprs, default_expr, .. } => {
+            MirExpr::Switch {
+                discr,
+                guarded_exprs,
+                default_expr,
+                ..
+            } => {
                 discr.visit_subrvalue_mut(visitor)?;
                 for (_, expr) in guarded_exprs {
                     expr.visit_subrvalue_mut(visitor)?;
@@ -164,16 +190,28 @@ impl<'tcx> MirExpr<'tcx> {
 
     /// Normalize
     pub fn normalize(&mut self) {
-        self.visit_subrvalue_mut::<()>(&|e| { e.normalize(); Ok(()) }).unwrap();
+        self.visit_subrvalue_mut::<()>(&|e| {
+            e.normalize();
+            Ok(())
+        })
+        .unwrap();
         // Note: we don't remove empty projections because they infor that an assignment happened.
         // TODO: Optimize away switch branches that are equal to the default branch
     }
 
     /// Replaces all places in the expression with a new `MirExpr`.
-    pub fn replace_places<E>(&mut self, visitor: &dyn Fn(mir::Place<'tcx>) -> Result<Option<MirExpr<'tcx>>, E>) -> Result<(), E> {
+    pub fn replace_places<E>(
+        &mut self,
+        visitor: &dyn Fn(mir::Place<'tcx>) -> Result<Option<MirExpr<'tcx>>, E>,
+    ) -> Result<(), E> {
         match self {
             MirExpr::Rvalue(rvalue) => rvalue.replace_places(visitor)?,
-            MirExpr::Switch { discr, guarded_exprs, default_expr, .. } => {
+            MirExpr::Switch {
+                discr,
+                guarded_exprs,
+                default_expr,
+                ..
+            } => {
                 discr.replace_places(visitor)?;
                 for (_, expr) in guarded_exprs {
                     expr.replace_places(visitor)?;
@@ -194,13 +232,19 @@ impl<'tcx> MirExpr<'tcx> {
     }
 
     /// Replaces all locals in the expression with a new expression.
-    pub fn replace_locals<E>(&mut self, visitor: &dyn Fn(mir::Local) -> Result<Option<MirExpr<'tcx>>, E>) -> Result<(), E> {
+    pub fn replace_locals<E>(
+        &mut self,
+        visitor: &dyn Fn(mir::Local) -> Result<Option<MirExpr<'tcx>>, E>,
+    ) -> Result<(), E> {
         self.replace_places(&|place| {
             if let Some(new_expr) = visitor(place.local)? {
-                Ok(Some(RvalueExpr::Projections {
-                    base: box new_expr,
-                    projections: place.projection.iter().collect(),
-                }.into()))
+                Ok(Some(
+                    RvalueExpr::Projections {
+                        base: box new_expr,
+                        projections: place.projection.iter().collect(),
+                    }
+                    .into(),
+                ))
             } else {
                 Ok(None)
             }
@@ -217,15 +261,14 @@ impl<'tcx> MirExpr<'tcx> {
 
     pub fn strip_ref(&self) -> Option<&Self> {
         match self {
-            MirExpr::Rvalue(rvalue) => {
-                match rvalue {
-                    RvalueExpr::Projections { box base, projections } if projections.is_empty() => {
-                        base.strip_ref()
-                    }
-                    &RvalueExpr::Ref { box ref expr, .. } => Some(expr),
-                    _ => None,
-                }
-            }
+            MirExpr::Rvalue(rvalue) => match rvalue {
+                RvalueExpr::Projections {
+                    box base,
+                    projections,
+                } if projections.is_empty() => base.strip_ref(),
+                &RvalueExpr::Ref { box ref expr, .. } => Some(expr),
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -235,7 +278,12 @@ impl std::fmt::Display for MirExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MirExpr::Rvalue(rvalue) => write!(f, "{rvalue}"),
-            MirExpr::Switch { discr, guarded_exprs, default_expr, .. } => {
+            MirExpr::Switch {
+                discr,
+                guarded_exprs,
+                default_expr,
+                ..
+            } => {
                 write!(f, "switch {discr} {{")?;
                 for (guard, expr) in guarded_exprs {
                     write!(f, " {guard} => {expr},")?;

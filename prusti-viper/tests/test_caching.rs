@@ -7,7 +7,7 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{PathBuf, Path},
+    path::{Path, PathBuf},
     process::Command,
 };
 
@@ -71,34 +71,56 @@ fn test_prusti_rustc_caching_hash() {
             .env("PRUSTI_SAFE_CLIENTS_ENCODER", "false")
             .output()
             .expect("failed to execute prusti-rustc");
-        assert!(out.status.success(), "Failed to compile: {:?}\n{}", program, String::from_utf8(out.stderr).unwrap());
+        assert!(
+            out.status.success(),
+            "Failed to compile: {:?}\n{}",
+            program,
+            String::from_utf8(out.stderr).unwrap()
+        );
         let stdout = String::from_utf8(out.stdout).unwrap();
-        let mut hash_lines = stdout.lines()
+        let mut hash_lines = stdout
+            .lines()
             .skip_while(|line| !line.starts_with("Received verification request for: "));
         while let Some(l1) = hash_lines.next() {
-            let mut full_name = l1.strip_prefix("Received verification request for: ").unwrap().to_string();
+            let mut full_name = l1
+                .strip_prefix("Received verification request for: ")
+                .unwrap()
+                .to_string();
             full_name.push_str("-Both.vpr");
-            full_name = prusti_common::report::log::to_legal_file_name_of_max_length(full_name, 120);
+            full_name =
+                prusti_common::report::log::to_legal_file_name_of_max_length(full_name, 120);
             let mut name = full_name.split(".rs_");
             let _filename = name.next().unwrap();
             let fn_name = name.next().unwrap();
             let l2 = hash_lines.next().unwrap();
-            let hash: u64 = l2.strip_prefix("Hash of the request is: ").unwrap().parse().unwrap();
+            let hash: u64 = l2
+                .strip_prefix("Hash of the request is: ")
+                .unwrap()
+                .parse()
+                .unwrap();
             std::fs::rename(
                 format!("log/viper_program/{full_name}"),
-                format!("log/viper_program/{hash}.vpr")
-            ).unwrap();
-            hashes.entry(fn_name.to_string())
-                .and_modify(|other|
+                format!("log/viper_program/{hash}.vpr"),
+            )
+            .unwrap();
+            hashes
+                .entry(fn_name.to_string())
+                .and_modify(|other| {
                     if hash != *other {
-                        let f1 = std::fs::read_to_string(format!("log/viper_program/{hash}.vpr")).unwrap();
-                        let f2 = std::fs::read_to_string(format!("log/viper_program/{}.vpr", *other)).unwrap();
+                        let f1 = std::fs::read_to_string(format!("log/viper_program/{hash}.vpr"))
+                            .unwrap();
+                        let f2 =
+                            std::fs::read_to_string(format!("log/viper_program/{}.vpr", *other))
+                                .unwrap();
                         println!("{}", diffy::create_patch(&f1, &f2));
                         std::fs::remove_dir_all("log").unwrap();
                         std::fs::remove_file(program).unwrap();
-                        panic!("Hash of function \"{}\" differs: {} vs {}", fn_name, hash, *other);
+                        panic!(
+                            "Hash of function \"{}\" differs: {} vs {}",
+                            fn_name, hash, *other
+                        );
                     }
-                )
+                })
                 .or_insert(hash);
         }
     };
@@ -118,7 +140,10 @@ fn test_prusti_rustc_caching_error() {
             .arg("--crate-type=lib")
             .arg(program)
             .env("RUST_BACKTRACE", "1")
-            .env("PRUSTI_CACHE_PATH", cache_file.to_string_lossy().to_string())
+            .env(
+                "PRUSTI_CACHE_PATH",
+                cache_file.to_string_lossy().to_string(),
+            )
             .output()
             .expect("failed to execute prusti-rustc");
         assert!(!out.status.success());

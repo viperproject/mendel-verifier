@@ -5,7 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::encoder::safe_clients::prelude::*;
-use prelude::types::{snapshot_might_contain_references, is_unsafe_cell};
+use prelude::types::{is_unsafe_cell, snapshot_might_contain_references};
 use type_layout::*;
 
 /// Encodes a generic domain
@@ -14,15 +14,22 @@ use type_layout::*;
 /// * A discriminant, if the type is an enum.
 /// * A destructor (aka getter) for each field, in the order of the variants.
 pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>, layout: TypeLayout<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+    layout: TypeLayout<'tcx>,
 ) -> EncodingResult<vir::Domain> {
-    trace!("build_value_snapshot_domain_from_layout {ty:?} with {} variants", layout.variants.len());
+    trace!(
+        "build_value_snapshot_domain_from_layout {ty:?} with {} variants",
+        layout.variants.len()
+    );
     let tcx = encoder.env().tcx();
     debug_assert!(types::is_opaque_type(tcx, ty) || ty.is_enum() || layout.variants.len() <= 1); // the never type has zero variants
     let ty_name = types::encode_type_name(encoder, ty)?;
     let domain_name = value_snapshot_domain::value_snapshot_domain_name(encoder, ty)?;
-    let value_snapshot_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::ValueSnapshot(ty))?;
-    let memory_snapshot_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(ty))?;
+    let value_snapshot_type =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::ValueSnapshot(ty))?;
+    let memory_snapshot_type =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(ty))?;
     let memory_snapshot_domain = MemSnapshotDomain::encode(encoder, ty)?;
     let version_type = encoder.encode_builtin_domain_type(BuiltinDomainKind::Version)?;
 
@@ -37,9 +44,10 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
         constructors.push(vir::DomainFunc::new(
             &domain_name,
             value_snapshot_domain::constructor_function_name(&ty_name, &variant_component),
-            variant.value_fields().map(|f|
-                vir::LocalVar::new(&f.name, f.value_snapshot_ty().clone())
-            ).collect(),
+            variant
+                .value_fields()
+                .map(|f| vir::LocalVar::new(&f.name, f.value_snapshot_ty().clone()))
+                .collect(),
             value_snapshot_type.clone(),
         ));
     }
@@ -50,7 +58,7 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
         discriminant.push(vir::DomainFunc::new(
             &domain_name,
             value_snapshot_domain::field_function_name(&ty_name, "discriminant"),
-            vec![ vir_local!(snap: {value_snapshot_type.clone()}) ],
+            vec![vir_local!(snap: {value_snapshot_type.clone()})],
             vir::Type::Int,
         ));
     }
@@ -64,15 +72,18 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 variant_destructors.push(vir::DomainFunc::new(
                     &domain_name,
                     value_snapshot_domain::field_function_name(&ty_name, &field.name),
-                    vec![ vir_local!(snap: {value_snapshot_type.clone()}) ],
+                    vec![vir_local!(snap: {value_snapshot_type.clone()})],
                     field.value_snapshot_ty().clone(),
                 ));
             } else {
                 variant_destructors.push(vir::DomainFunc::new(
                     &domain_name,
                     // Ugly patch to disallow mentioning private fields in specifications
-                    format!("{}_ERROR_field_is_not_visible", value_snapshot_domain::field_function_name(&ty_name, &field.name)),
-                    vec![ vir_local!(snap: {value_snapshot_type.clone()}) ],
+                    format!(
+                        "{}_ERROR_field_is_not_visible",
+                        value_snapshot_domain::field_function_name(&ty_name, &field.name)
+                    ),
+                    vec![vir_local!(snap: {value_snapshot_type.clone()})],
                     field.value_snapshot_ty().clone(),
                 ));
             }
@@ -81,19 +92,17 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
     }
 
     // Conversion functions
-    let mut conversion_functions = vec![
-        vir::DomainFunc::new(
-            &domain_name,
-            value_snapshot_domain::conversion_from_memory_function_name(&ty_name),
-            vec![ vir_local!(snap: {memory_snapshot_type.clone()}) ],
-            value_snapshot_type.clone(),
-        )
-    ];
+    let mut conversion_functions = vec![vir::DomainFunc::new(
+        &domain_name,
+        value_snapshot_domain::conversion_from_memory_function_name(&ty_name),
+        vec![vir_local!(snap: {memory_snapshot_type.clone()})],
+        value_snapshot_type.clone(),
+    )];
     if !snapshot_might_contain_references(tcx, ty) {
         conversion_functions.push(vir::DomainFunc::new(
             &domain_name,
             value_snapshot_domain::conversion_to_memory_function_name(&ty_name),
-            vec![ vir_local!(snap: {value_snapshot_type.clone()}) ],
+            vec![vir_local!(snap: {value_snapshot_type.clone()})],
             memory_snapshot_type.clone(),
         ));
     }
@@ -120,11 +129,18 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                     // forall v ::
                     vec![self_var],
                     // { get_value_discr(v) }
-                    vec![ vir::Trigger::new(vec![discriminant_value.clone()]) ],
+                    vec![vir::Trigger::new(vec![discriminant_value.clone()])],
                     // get_value_discr(v) == <value_1> || ... || get_value_discr(v) == <value_k>
-                    layout.variants.iter().map(|variant|
-                        vir::Expr::eq_cmp(discriminant_value.clone(), variant.discriminant.clone())
-                    ).disjoin(),
+                    layout
+                        .variants
+                        .iter()
+                        .map(|variant| {
+                            vir::Expr::eq_cmp(
+                                discriminant_value.clone(),
+                                variant.discriminant.clone(),
+                            )
+                        })
+                        .disjoin(),
                 ),
             ));
         }
@@ -138,10 +154,12 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 // and private fields, but it's a rare case.
                 continue;
             }
-            let fields: Vec<_> = variant.value_fields().map(|f|
-                vir::LocalVar::new(format!("f${}", f.name), f.value_snapshot_ty().clone())
-            ).collect();
-            let construction = constructors[variant_idx].clone()
+            let fields: Vec<_> = variant
+                .value_fields()
+                .map(|f| vir::LocalVar::new(format!("f${}", f.name), f.value_snapshot_ty().clone()))
+                .collect();
+            let construction = constructors[variant_idx]
+                .clone()
                 .apply(fields.iter().cloned().map(vir::Expr::from).collect());
 
             // Boxy of the axiom
@@ -155,7 +173,7 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                     // forall v_1...v_n ::
                     fields.clone(),
                     // { new_value_snap_of_T_variant<k>(v_1...v_n) }
-                    vec![ vir::Trigger::new(vec![construction.clone()]) ],
+                    vec![vir::Trigger::new(vec![construction.clone()])],
                     // get_value_discr(new_value_snap_of_T_variant<k>(v_1...v_n)) == <k>
                     body,
                 );
@@ -183,9 +201,11 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
         let self_var = vir_local!(self: {value_snapshot_type.clone()});
         let discriminant_value = discriminant[0].apply1(self_var.clone());
         for (variant_idx, variant) in layout.variants.iter().enumerate() {
-            let fields: Vec<_> = variant.value_fields().enumerate().map(|(field_idx, _)|
-                destructors[variant_idx][field_idx].apply1(self_var.clone())
-            ).collect();
+            let fields: Vec<_> = variant
+                .value_fields()
+                .enumerate()
+                .map(|(field_idx, _)| destructors[variant_idx][field_idx].apply1(self_var.clone()))
+                .collect();
             let mut triggers = vec![
                 // { get_value_discr(v) }
                 vir::Trigger::new(vec![discriminant_value.clone()]),
@@ -197,7 +217,10 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
             let construction = constructors[variant_idx].apply(fields);
             existence_axioms.push(vir::DomainAxiom::new(
                 &domain_name,
-                format!("Definition of the existence of the constructor of variant {}", variant.name),
+                format!(
+                    "Definition of the existence of the constructor of variant {}",
+                    variant.name
+                ),
                 format!("value_snapshot_existence_of_{ty_name}_variant${variant_idx}"),
                 vir::Expr::forall(
                     // forall v ::
@@ -208,11 +231,8 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                     //     v == new_value_snap_of_T_variant<1>(get_value_field_1(v), ...)
                     vir::Expr::implies(
                         vir::Expr::eq_cmp(discriminant_value.clone(), variant.discriminant.clone()),
-                        vir::Expr::eq_cmp(
-                            self_var.clone().into(),
-                            construction,
-                        )
-                    )
+                        vir::Expr::eq_cmp(self_var.clone().into(), construction),
+                    ),
                 ),
             ));
         }
@@ -220,9 +240,11 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
         let self_var = vir_local!(self: {value_snapshot_type.clone()});
         for (variant_idx, variant) in layout.variants.iter().enumerate() {
             debug_assert_eq!(variant_idx, 0);
-            let fields: Vec<_> = variant.value_fields().enumerate().map(|(field_idx, _)|
-                destructors[variant_idx][field_idx].apply1(self_var.clone())
-            ).collect();
+            let fields: Vec<_> = variant
+                .value_fields()
+                .enumerate()
+                .map(|(field_idx, _)| destructors[variant_idx][field_idx].apply1(self_var.clone()))
+                .collect();
             let mut triggers = vec![];
             for field in &fields {
                 // { get_value_field_1(v) }
@@ -231,7 +253,10 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
             let construction = constructors[variant_idx].apply(fields);
             existence_axioms.push(vir::DomainAxiom::new(
                 &domain_name,
-                format!("Definition of the existence of the constructor of variant {}", variant.name),
+                format!(
+                    "Definition of the existence of the constructor of variant {}",
+                    variant.name
+                ),
                 format!("value_snapshot_existence_of_{ty_name}_variant${variant_idx}"),
                 vir::Expr::forall(
                     // forall v ::
@@ -239,10 +264,7 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                     // { get_value_field_1(v) } ...
                     triggers,
                     // v == new_value_snap_of_T_variant<1>(get_value_field_1(v), ...)
-                    vir::Expr::eq_cmp(
-                        self_var.clone().into(),
-                        construction,
-                    )
+                    vir::Expr::eq_cmp(self_var.clone().into(), construction),
                 ),
             ));
         }
@@ -265,11 +287,13 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
             continue;
         }
 
-        let fields: Vec<_> = variant.value_fields().map(|f|
-            vir::LocalVar::new(format!("f${}", f.name), f.value_snapshot_ty().clone())
-        ).collect();
+        let fields: Vec<_> = variant
+            .value_fields()
+            .map(|f| vir::LocalVar::new(format!("f${}", f.name), f.value_snapshot_ty().clone()))
+            .collect();
         let constructor = &constructors[variant_idx];
-        let construction = constructor.clone()
+        let construction = constructor
+            .clone()
             .apply(fields.iter().cloned().map(vir::Expr::from).collect());
         for (field_idx, field) in variant.value_fields().enumerate() {
             let field_destructor = &destructors[variant_idx][field_idx];
@@ -292,22 +316,20 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
 
     // Build conversion axioms
     let mut conversion_axioms = vec![];
-    let convert_field_to = |
-        field_expr: vir::Expr, value_field_ty: Option<ty::Ty<'tcx>>, kind: SnapshotKind,
-    | -> EncodingResult<vir::Expr> {
+    let convert_field_to = |field_expr: vir::Expr,
+                            value_field_ty: Option<ty::Ty<'tcx>>,
+                            kind: SnapshotKind|
+     -> EncodingResult<vir::Expr> {
         Ok(match (value_field_ty, ty.kind()) {
             _ if ty.is_primitive_ty() => field_expr,
             _ if is_unsafe_cell(ty) => field_expr,
             (Some(field_ty), _) | (_, &ty::TyKind::Ref(_, field_ty, _)) => {
                 let field_value_domain = ValueSnapshotDomain::encode(encoder, field_ty)?;
                 match kind {
-                    SnapshotKind::Memory => {
-                        field_value_domain.conversion_to_memory_function()?
-                    }
-                    SnapshotKind::Value => {
-                        field_value_domain.conversion_from_memory_function()?
-                    }
-                }.apply1(field_expr)
+                    SnapshotKind::Memory => field_value_domain.conversion_to_memory_function()?,
+                    SnapshotKind::Value => field_value_domain.conversion_from_memory_function()?,
+                }
+                .apply1(field_expr)
             }
             (_, &ty::TyKind::RawPtr(_)) => field_expr,
             unexpected => unreachable!("{unexpected:?}"),
@@ -329,15 +351,21 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 continue;
             }
 
-            let lhs_memory_fields_vars: Vec<_> = variant.fields.iter()
+            let lhs_memory_fields_vars: Vec<_> = variant
+                .fields
+                .iter()
                 .map(|f| vir::LocalVar::new(format!("f${}", f.name), f.mem_snapshot_ty.clone()))
                 .collect();
-            let lhs_memory_fields: Vec<_> = lhs_memory_fields_vars.iter()
-                .map(|f| vir::Expr::from(f.clone())).collect();
-            let rhs_memory_fields_vars: Vec<_> = variant.value_fields()
+            let lhs_memory_fields: Vec<_> = lhs_memory_fields_vars
+                .iter()
+                .map(|f| vir::Expr::from(f.clone()))
+                .collect();
+            let rhs_memory_fields_vars: Vec<_> = variant
+                .value_fields()
                 .map(|f| vir::LocalVar::new(format!("f${}", f.name), f.mem_snapshot_ty.clone()))
                 .collect();
-            let rhs_value_fields: Vec<_> = variant.value_fields()
+            let rhs_value_fields: Vec<_> = variant
+                .value_fields()
                 .zip(rhs_memory_fields_vars.iter())
                 .map(|(f, v)| convert_field_to(v.clone().into(), f.ty, SnapshotKind::Value))
                 .collect::<Result<Vec<_>, _>>()?;
@@ -346,7 +374,9 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                     .adt_constructor_function(Some(variant_idx.into()))?
                     .apply(lhs_memory_fields)
             } else {
-                memory_snapshot_domain.constructor_function()?.apply(lhs_memory_fields)
+                memory_snapshot_domain
+                    .constructor_function()?
+                    .apply(lhs_memory_fields)
             };
             let lhs_value_snapshot = conversion_functions[0].apply1(lhs_memory_snapshot.clone());
             let rhs_value_snapshot = if ty.is_enum() {
@@ -378,7 +408,7 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                             vir::Trigger::new(vec![rhs_value_snapshot])
                         },
                     ],
-                    body
+                    body,
                 );
             }
             conversion_axioms.push(vir::DomainAxiom::new(
@@ -405,12 +435,18 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                 continue;
             }
 
-            let value_fields_vars: Vec<_> = variant.fields.iter()
+            let value_fields_vars: Vec<_> = variant
+                .fields
+                .iter()
                 .map(|f| vir::LocalVar::new(format!("v${}", f.name), f.value_snapshot_ty().clone()))
                 .collect();
-            let value_fields: Vec<_> = value_fields_vars.iter()
-                .map(|f| vir::Expr::from(f.clone())).collect();
-            let memory_fields: Vec<_> = variant.fields.iter()
+            let value_fields: Vec<_> = value_fields_vars
+                .iter()
+                .map(|f| vir::Expr::from(f.clone()))
+                .collect();
+            let memory_fields: Vec<_> = variant
+                .fields
+                .iter()
                 .zip(value_fields.iter())
                 .map(|(f, e)| convert_field_to(e.clone(), f.ty, SnapshotKind::Memory))
                 .collect::<Result<Vec<_>, _>>()?;
@@ -419,7 +455,9 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                     .adt_constructor_function(Some(variant_idx.into()))?
                     .apply(memory_fields)
             } else {
-                memory_snapshot_domain.constructor_function()?.apply(memory_fields)
+                memory_snapshot_domain
+                    .constructor_function()?
+                    .apply(memory_fields)
             };
             let lhs_value_snapshot = if ty.is_enum() {
                 constructors[variant_idx].apply(value_fields)
@@ -446,7 +484,7 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
                         // { new_memory_snap_of_T(to_memory_T1(v_1)...to_memory_Tn(v_n)) }
                         vir::Trigger::new(vec![rhs_memory_snapshot]),
                     ],
-                    body
+                    body,
                 );
             }
             conversion_axioms.push(vir::DomainAxiom::new(
@@ -475,7 +513,7 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
             &domain_name,
             "Definition of conversion from value to memory to value",
             format!("conversion_value_to_value_of_{ty_name}"),
-            body
+            body,
         ));
     }
     if !snapshot_might_contain_references(tcx, ty) {
@@ -496,14 +534,26 @@ pub(super) fn build_value_snapshot_domain_from_layout<'v, 'tcx: 'v>(
             &domain_name,
             "Definition of conversion from memory to value to memory",
             format!("conversion_memory_to_memory_of_{ty_name}"),
-            body
+            body,
         ));
     }
 
     Ok(vir::Domain {
         name: domain_name,
-        functions: vec![constructors, discriminant, destructors.concat(), conversion_functions].concat(),
-        axioms: vec![discriminant_axioms, existence_axioms, destructor_axioms, conversion_axioms].concat(),
+        functions: vec![
+            constructors,
+            discriminant,
+            destructors.concat(),
+            conversion_functions,
+        ]
+        .concat(),
+        axioms: vec![
+            discriminant_axioms,
+            existence_axioms,
+            destructor_axioms,
+            conversion_axioms,
+        ]
+        .concat(),
         type_vars: vec![],
     })
 }

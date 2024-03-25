@@ -4,9 +4,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::encoder::safe_clients::prelude::*;
-use crate::encoder::safe_clients::procedure_encoder::*;
-use crate::encoder::mir_successor::MirSuccessor;
+use crate::encoder::{
+    mir_successor::MirSuccessor,
+    safe_clients::{prelude::*, procedure_encoder::*},
+};
 
 impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
     /// Note: it's better to call `encode_statement_at` instead of this method.
@@ -17,7 +18,9 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
     ) -> SpannedEncodingResult<(Vec<vir::Stmt>, MirSuccessor)> {
         trace!(
             "Encode terminator '{:?}', location: {:?}, span: {:?}",
-            term.kind, location, term.source_info.span
+            term.kind,
+            location,
+            term.source_info.span
         );
         let mut stmts: Vec<vir::Stmt> = vec![];
         let span = self.get_span_of_location(location);
@@ -79,13 +82,19 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
                 let mut cfg_targets: Vec<(vir::Expr, mir::BasicBlock)> = vec![];
 
                 // Store the discriminant value in a local variable.
-                let discr_var = self.cfg_method.add_fresh_local_var(
-                    types::encode_primitive_type(switch_ty).with_span(span)?
-                );
-                let switch_domain = MemSnapshotDomain::encode(self.encoder, switch_ty).with_span(span)?;
-                let encoded_discr = switch_domain.primitive_field_function().with_span(span)?
-                    .apply1(self.encode_operand_snapshot(discr, Version::Old).with_span(span)?);
-                stmts.push(vir::Stmt::Assign( vir::Assign {
+                let discr_var = self
+                    .cfg_method
+                    .add_fresh_local_var(types::encode_primitive_type(switch_ty).with_span(span)?);
+                let switch_domain =
+                    MemSnapshotDomain::encode(self.encoder, switch_ty).with_span(span)?;
+                let encoded_discr = switch_domain
+                    .primitive_field_function()
+                    .with_span(span)?
+                    .apply1(
+                        self.encode_operand_snapshot(discr, Version::Old)
+                            .with_span(span)?,
+                    );
+                stmts.push(vir::Stmt::Assign(vir::Assign {
                     target: discr_var.clone().into(),
                     source: encoded_discr,
                     kind: vir::AssignKind::Copy,
@@ -106,12 +115,12 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
                             }
                         }
 
-                        ty::TyKind::Int(_)
-                        | ty::TyKind::Uint(_)
-                        | ty::TyKind::Char => vir::Expr::eq_cmp(
-                            discr_var.clone().into(),
-                            self.encoder.encode_int_cast(value, switch_ty),
-                        ),
+                        ty::TyKind::Int(_) | ty::TyKind::Uint(_) | ty::TyKind::Char => {
+                            vir::Expr::eq_cmp(
+                                discr_var.clone().into(),
+                                self.encoder.encode_int_cast(value, switch_ty),
+                            )
+                        }
 
                         ref x => unreachable!("{:?}", x),
                     };
@@ -151,10 +160,8 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
                         let default_target_span = self.get_span_of_basic_block(default_target);
                         if target_span > default_target_span {
                             let guard_pos = target_guard.pos();
-                            cfg_targets = vec![(
-                                target_guard.negate().set_pos(guard_pos),
-                                default_target,
-                            )];
+                            cfg_targets =
+                                vec![(target_guard.negate().set_pos(guard_pos), default_target)];
                             default_target = target;
                         } else {
                             // Undo the pop
@@ -172,7 +179,7 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
 
             mir::TerminatorKind::Abort => {
                 let pos = self.register_error(term.source_info.span, ErrorCtxt::AbortTerminator);
-                stmts.push(vir::Stmt::Assert( vir::Assert {
+                stmts.push(vir::Stmt::Assert(vir::Assert {
                     expr: false.into(),
                     position: pos,
                 }));
@@ -224,41 +231,43 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
                 };
                 trace!(
                     "Encode function call {} ({called_def_id:?}) with substs {call_substs:?}",
-                    self.encoder.env().name.get_absolute_item_name(called_def_id)
+                    self.encoder
+                        .env()
+                        .name
+                        .get_absolute_item_name(called_def_id)
                 );
 
                 // The called method might be a trait method.
                 // We try to resolve it to the concrete implementation
                 // and type substitutions.
-                let (called_def_id, call_substs) = self.encoder.env().query
-                    .resolve_method_call(self.def_id, called_def_id, call_substs);
+                let (called_def_id, call_substs) = self.encoder.env().query.resolve_method_call(
+                    self.def_id,
+                    called_def_id,
+                    call_substs,
+                );
 
                 let is_pure_call = self.is_pure(Some(self.def_id()), called_def_id, call_substs);
                 // When encoding a direct recursive call, we need to encode it as a method.
                 let is_recursive_call = self.def_id == called_def_id;
                 if !is_recursive_call && is_pure_call {
                     assert!(target.is_some());
-                    stmts.extend(
-                        self.encode_pure_function_call(
-                            term.source_info.span,
-                            args,
-                            destination,
-                            called_def_id,
-                            call_substs,
-                            location,
-                        )?
-                    );
+                    stmts.extend(self.encode_pure_function_call(
+                        term.source_info.span,
+                        args,
+                        destination,
+                        called_def_id,
+                        call_substs,
+                        location,
+                    )?);
                 } else {
-                    stmts.extend(
-                        self.encode_impure_function_call(
-                            term.source_info.span,
-                            args,
-                            Some(destination),
-                            called_def_id,
-                            call_substs,
-                            location,
-                        )?
-                    );
+                    stmts.extend(self.encode_impure_function_call(
+                        term.source_info.span,
+                        args,
+                        Some(destination),
+                        called_def_id,
+                        call_substs,
+                        location,
+                    )?);
                 }
 
                 if let Some(target) = target {
@@ -272,10 +281,12 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
                 }
             }
 
-            mir::TerminatorKind::Call {..} => return Err(SpannedEncodingError::unsupported(
-                "non-literal function calls are not supported",
-                term.source_info.span,
-            )),
+            mir::TerminatorKind::Call { .. } => {
+                return Err(SpannedEncodingError::unsupported(
+                    "non-literal function calls are not supported",
+                    term.source_info.span,
+                ))
+            }
 
             mir::TerminatorKind::Assert {
                 ref cond,
@@ -287,10 +298,12 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
                 trace!("Assert cond '{:?}', expected '{:?}'", cond, expected);
 
                 let cond_ty = self.tcx().mk_ty(ty::TyKind::Bool);
-                let cond_snap = self.encode_operand_snapshot(cond, Version::Old).with_span(span)?;
-                let encoded_cond = self.encode_snapshot_primitive_value(
-                    SnapshotExpr::new_memory(cond_snap), cond_ty
-                ).with_span(span)?;
+                let cond_snap = self
+                    .encode_operand_snapshot(cond, Version::Old)
+                    .with_span(span)?;
+                let encoded_cond = self
+                    .encode_snapshot_primitive_value(SnapshotExpr::new_memory(cond_snap), cond_ty)
+                    .with_span(span)?;
                 let viper_guard = if expected {
                     encoded_cond
                 } else {
@@ -309,18 +322,13 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
 
                 stmts.push(vir::Stmt::comment(format!("Rust assertion: {assert_msg}")));
                 if config::check_panics() {
-                    stmts.push(vir::Stmt::Assert( vir::Assert {
+                    stmts.push(vir::Stmt::Assert(vir::Assert {
                         expr: viper_guard,
-                        position: self.register_error(
-                            term.source_info.span,
-                            error_ctxt,
-                        ),
+                        position: self.register_error(term.source_info.span, error_ctxt),
                     }));
                 } else {
                     stmts.push(vir::Stmt::comment("This assertion will not be checked"));
-                    stmts.push(vir::Stmt::Inhale( vir::Inhale {
-                        expr: viper_guard,
-                    }));
+                    stmts.push(vir::Stmt::Inhale(vir::Inhale { expr: viper_guard }));
                 };
 
                 (stmts, MirSuccessor::Goto(target))
@@ -329,10 +337,12 @@ impl<'p, 'v: 'p, 'tcx: 'v> VersionBasedProcedureEncoder<'p, 'v, 'tcx> {
             mir::TerminatorKind::Resume
             | mir::TerminatorKind::Yield { .. }
             | mir::TerminatorKind::GeneratorDrop
-            | mir::TerminatorKind::InlineAsm { .. } => return Err(SpannedEncodingError::unsupported(
-                format!("unsupported terminator kind: {:?}", term.kind),
-                term.source_info.span,
-            )),
+            | mir::TerminatorKind::InlineAsm { .. } => {
+                return Err(SpannedEncodingError::unsupported(
+                    format!("unsupported terminator kind: {:?}", term.kind),
+                    term.source_info.span,
+                ))
+            }
         };
         Ok(result)
     }

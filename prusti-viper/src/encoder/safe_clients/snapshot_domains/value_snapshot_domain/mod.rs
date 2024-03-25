@@ -8,11 +8,11 @@ mod from_layout;
 mod adt;
 use std::rc::Rc;
 
-use from_layout::*;
-pub use adt::*;
-use prelude::types::snapshot_might_contain_references;
-use crate::encoder::safe_clients::prelude::*;
 use super::snapshot_builder::SnapshotBuilder;
+use crate::encoder::safe_clients::prelude::*;
+pub use adt::*;
+use from_layout::*;
+use prelude::types::snapshot_might_contain_references;
 
 pub(super) const DOMAIN_NAME_PREFIX: &str = "ValueSnapshot";
 pub(super) const CONSTRUCTOR_NAME_PREFIX: &str = "new_value_snap";
@@ -37,16 +37,25 @@ pub(super) fn conversion_to_memory_function_name(ty_name: &str) -> String {
     format!("{CONVERSION_NAME_PREFIX}_to_memory_of_{ty_name}")
 }
 
-pub fn value_snapshot_domain_name<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<String> {
+pub fn value_snapshot_domain_name<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<String> {
     let ty_name = types::encode_type_name(encoder, ty)?;
     Ok(format!("{DOMAIN_NAME_PREFIX}${ty_name}"))
 }
 
-pub fn value_snapshot_domain_type<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<vir::Type> {
+pub fn value_snapshot_domain_type<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<vir::Type> {
     Ok(vir::Type::domain(value_snapshot_domain_name(encoder, ty)?))
 }
 
-pub fn build_value_snapshot_domain<'v, 'tcx: 'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<vir::Domain> {
+pub fn build_value_snapshot_domain<'v, 'tcx: 'v>(
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
+) -> EncodingResult<vir::Domain> {
     debug!("build_value_snapshot_domain({:?})", ty);
     let layout = type_layout::build_layout(encoder, ty)?;
     build_value_snapshot_domain_from_layout(encoder, ty, layout)
@@ -60,23 +69,31 @@ pub struct ValueSnapshotDomain<'tcx> {
 
 impl<'tcx> ValueSnapshotDomain<'tcx> {
     /// Returns the domain encoding a value snapshot of the given type.
-    pub fn encode<'v>(encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>) -> EncodingResult<ValueSnapshotDomain<'tcx>> {
+    pub fn encode<'v>(
+        encoder: &Encoder<'v, 'tcx>,
+        ty: ty::Ty<'tcx>,
+    ) -> EncodingResult<ValueSnapshotDomain<'tcx>> {
         let domain = encoder.encode_builtin_domain(BuiltinDomainKind::ValueSnapshot(ty))?;
         Ok(Self::new(domain, ty, encoder.env().tcx()))
     }
 
     /// Wrap the generic domain encoding of a value snapshot. Acts like a downcast.
-    pub fn new(domain: Rc<vir::Domain>, ty: ty::Ty<'tcx>, tcx: ty::TyCtxt<'tcx>) -> ValueSnapshotDomain<'tcx> {
+    pub fn new(
+        domain: Rc<vir::Domain>,
+        ty: ty::Ty<'tcx>,
+        tcx: ty::TyCtxt<'tcx>,
+    ) -> ValueSnapshotDomain<'tcx> {
         debug_assert!(domain.name.starts_with(DOMAIN_NAME_PREFIX));
-        ValueSnapshotDomain {
-            ty,
-            domain,
-            tcx,
-        }
+        ValueSnapshotDomain { ty, domain, tcx }
     }
 
     /// Private helper method to get a function from the domain.
-    pub(super) fn get_domain_function(&self, name: &str, index: usize, prefix: &str) -> EncodingResult<vir::DomainFunc> {
+    pub(super) fn get_domain_function(
+        &self,
+        name: &str,
+        index: usize,
+        prefix: &str,
+    ) -> EncodingResult<vir::DomainFunc> {
         let Some(func) = self.domain.functions.get(index) else {
             error_internal!(
                 "cannot find function for {} in domain of type {:?}:\n{:#?}",
@@ -100,14 +117,21 @@ impl<'tcx> ValueSnapshotDomain<'tcx> {
             ty::TyKind::Adt(adt_def, _) if adt_def.is_struct() => {
                 debug_assert!(adt_def.variants().len() == 1);
                 // constructor, then field getters
-                1 + adt_def.variants().iter().map(|v| v.fields.len()).sum::<usize>()
+                1 + adt_def
+                    .variants()
+                    .iter()
+                    .map(|v| v.fields.len())
+                    .sum::<usize>()
             }
             ty::TyKind::Adt(adt_def, _) if adt_def.is_enum() => {
                 // constructors of the variants, then discriminant, then field getters
                 let num_getters: usize = adt_def.variants().iter().map(|v| v.fields.len()).sum();
                 adt_def.variants().len() + 1 + num_getters
             }
-            _ if self.ty.is_primitive_ty() || self.ty.is_unsafe_ptr() || self.ty.is_region_ptr() => {
+            _ if self.ty.is_primitive_ty()
+                || self.ty.is_unsafe_ptr()
+                || self.ty.is_region_ptr() =>
+            {
                 // constructor, then field getter
                 2
             }
@@ -123,13 +147,19 @@ impl<'tcx> ValueSnapshotDomain<'tcx> {
         let fn_index = self.count_constructors_and_getters()?;
         if snapshot_might_contain_references(self.tcx, self.ty) {
             debug_assert_eq!(
-                self.domain.functions.len(), fn_index + 1,
-                "Type {:?} has unexpected functions {:#?}", self.ty, self.domain.functions,
+                self.domain.functions.len(),
+                fn_index + 1,
+                "Type {:?} has unexpected functions {:#?}",
+                self.ty,
+                self.domain.functions,
             );
         } else {
             debug_assert_eq!(
-                self.domain.functions.len(), fn_index + 2,
-                "Type {:?} has unexpected functions {:#?}", self.ty, self.domain.functions,
+                self.domain.functions.len(),
+                fn_index + 2,
+                "Type {:?} has unexpected functions {:#?}",
+                self.ty,
+                self.domain.functions,
             );
         }
         self.get_domain_function("convert from memory", fn_index, CONVERSION_NAME_PREFIX)
@@ -141,7 +171,8 @@ impl<'tcx> ValueSnapshotDomain<'tcx> {
         if snapshot_might_contain_references(self.tcx, self.ty) {
             error_internal!(
                 "value snapshot cannot be converted to memory snapshot for type {:?}, \
-                because a type instance might contain references", self.ty,
+                because a type instance might contain references",
+                self.ty,
             );
         }
         debug_assert!(self.domain.functions.len() == fn_index + 2);
@@ -198,11 +229,18 @@ impl<'tcx> SnapshotBuilder<'tcx> for ValueSnapshotDomain<'tcx> {
         self.get_domain_function("content address", 1, FIELD_NAME_PREFIX)
     }
 
-    fn adt_constructor_function(&self, variant: Option<abi::VariantIdx>) -> EncodingResult<vir::DomainFunc> {
+    fn adt_constructor_function(
+        &self,
+        variant: Option<abi::VariantIdx>,
+    ) -> EncodingResult<vir::DomainFunc> {
         self.impl_adt_constructor_function(variant)
     }
 
-    fn adt_field_function(&self, variant: Option<abi::VariantIdx>, field: mir::Field) -> EncodingResult<vir::DomainFunc> {
+    fn adt_field_function(
+        &self,
+        variant: Option<abi::VariantIdx>,
+        field: mir::Field,
+    ) -> EncodingResult<vir::DomainFunc> {
         self.impl_adt_field_function(variant, field)
     }
 

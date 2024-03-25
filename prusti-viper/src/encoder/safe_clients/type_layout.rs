@@ -67,78 +67,68 @@ impl<'tcx> FieldLayout<'tcx> {
 }
 
 pub fn build_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<TypeLayout<'tcx>> {
     trace!("build_layout {:?}", ty);
     match ty.kind() {
         _ if types::is_opaque_type(encoder.env().tcx(), ty) => {
             debug_assert!(ty.is_adt());
-            Ok(TypeLayout{ variants: vec![] })
+            Ok(TypeLayout { variants: vec![] })
         }
-        _ if ty.is_primitive_ty() => {
-            build_primitive_layout(encoder, ty)
-        }
-        ty::TyKind::Tuple(_) => {
-            build_adt_layout(encoder, ty)
-        }
+        _ if ty.is_primitive_ty() => build_primitive_layout(encoder, ty),
+        ty::TyKind::Tuple(_) => build_adt_layout(encoder, ty),
         ty::TyKind::Adt(adt_def, _) if adt_def.is_unsafe_cell() => {
             build_unsafe_cell_layout(encoder, ty)
         }
         ty::TyKind::Adt(adt_def, _) if adt_def.is_struct() || adt_def.is_enum() => {
             build_adt_layout(encoder, ty)
         }
-        ty::TyKind::Ref(_, _, _) => {
-            build_reference_layout(encoder, ty)
-        }
-        ty::TyKind::RawPtr(_) => {
-            build_pointer_layout(encoder, ty)
-        }
+        ty::TyKind::Ref(_, _, _) => build_reference_layout(encoder, ty),
+        ty::TyKind::RawPtr(_) => build_pointer_layout(encoder, ty),
         _ => {
             // error_unsupported!("unsupported type {:?}", ty);
-            Ok(TypeLayout{ variants: vec![] })
+            Ok(TypeLayout { variants: vec![] })
         }
     }
 }
 
 fn build_primitive_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<TypeLayout<'tcx>> {
     if !ty.is_primitive_ty() {
         error_internal!("expected primitive type; got {:?}", ty);
     };
 
-    let fields = vec![
-        FieldLayout {
-            is_visible: true,
-            name: "value".to_string(),
-            mem_snapshot_ty: types::encode_primitive_type(ty)?,
-            value_snapshot_ty: Some(types::encode_primitive_type(ty)?),
-            ty: None,
-        }
-    ];
+    let fields = vec![FieldLayout {
+        is_visible: true,
+        name: "value".to_string(),
+        mem_snapshot_ty: types::encode_primitive_type(ty)?,
+        value_snapshot_ty: Some(types::encode_primitive_type(ty)?),
+        ty: None,
+    }];
 
     let variants = vec![VariantLayout {
         name: "primitive".to_string(),
         discriminant: 0.into(),
         fields,
     }];
-    Ok(TypeLayout{ variants })
+    Ok(TypeLayout { variants })
 }
 
 /// Encode *signed* discriminats
 fn encode_discriminant_value<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, adt_def: ty::AdtDef<'tcx>, variant_index: abi::VariantIdx,
+    encoder: &Encoder<'v, 'tcx>,
+    adt_def: ty::AdtDef<'tcx>,
+    variant_index: abi::VariantIdx,
 ) -> vir::Expr {
     let tcx = encoder.env().tcx();
     let discr_ty = adt_def.repr().discr_type();
     if discr_ty.is_signed() {
-        let bit_size =
-            abi::Integer::from_attr(&tcx, discr_ty)
-                .size()
-                .bits();
+        let bit_size = abi::Integer::from_attr(&tcx, discr_ty).size().bits();
         let shift = 128 - bit_size;
-        let unsigned_discr =
-            adt_def.discriminant_for_variant(tcx, variant_index).val;
+        let unsigned_discr = adt_def.discriminant_for_variant(tcx, variant_index).val;
         let casted_discr = unsigned_discr as i128;
         // sign extend the raw representation to be an i128
         ((casted_discr << shift) >> shift).into()
@@ -151,19 +141,18 @@ fn encode_discriminant_value<'v, 'tcx: 'v>(
 }
 
 fn build_adt_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<TypeLayout<'tcx>> {
     let mut variants = vec![];
     match ty.kind() {
         ty::TyKind::Tuple(substs) => {
             let mut fields = Vec::with_capacity(substs.len());
             for (field_idx, field_ty) in substs.iter().enumerate() {
-                let field_snapshot_ty = encoder.encode_builtin_domain_type(
-                    BuiltinDomainKind::MemorySnapshot(field_ty)
-                )?;
-                let field_value_snapshot_ty = encoder.encode_builtin_domain_type(
-                    BuiltinDomainKind::ValueSnapshot(field_ty)
-                )?;
+                let field_snapshot_ty = encoder
+                    .encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(field_ty))?;
+                let field_value_snapshot_ty = encoder
+                    .encode_builtin_domain_type(BuiltinDomainKind::ValueSnapshot(field_ty))?;
                 fields.push(FieldLayout {
                     is_visible: true,
                     name: format!("f${field_idx}"),
@@ -186,15 +175,12 @@ fn build_adt_layout<'v, 'tcx: 'v>(
                 for (field_idx, field) in variant.fields.iter().enumerate() {
                     let field_name = field.ident(tcx).name.to_ident_string();
                     let field_ty = field.ty(encoder.env().tcx(), substs);
-                    let field_snapshot_ty = encoder.encode_builtin_domain_type(
-                        BuiltinDomainKind::MemorySnapshot(field_ty)
-                    )?;
-                    let field_value_snapshot_ty = encoder.encode_builtin_domain_type(
-                        BuiltinDomainKind::ValueSnapshot(field_ty)
-                    )?;
-                    let field_address_ty = encoder.encode_builtin_domain_type(
-                        BuiltinDomainKind::Address(field_ty)
-                    )?;
+                    let field_snapshot_ty = encoder
+                        .encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(field_ty))?;
+                    let field_value_snapshot_ty = encoder
+                        .encode_builtin_domain_type(BuiltinDomainKind::ValueSnapshot(field_ty))?;
+                    let field_address_ty =
+                        encoder.encode_builtin_domain_type(BuiltinDomainKind::Address(field_ty))?;
                     fields.push(FieldLayout {
                         is_visible: field.vis.is_public(),
                         name: format!("f${field_name}"),
@@ -206,7 +192,7 @@ fn build_adt_layout<'v, 'tcx: 'v>(
                 variants.push(VariantLayout {
                     name: variant_name,
                     discriminant: 0.into(),
-                    fields
+                    fields,
                 });
             }
         }
@@ -219,12 +205,10 @@ fn build_adt_layout<'v, 'tcx: 'v>(
                 for (field_idx, field) in variant.fields.iter().enumerate() {
                     let field_name = field.ident(tcx).name.to_ident_string();
                     let field_ty = field.ty(encoder.env().tcx(), substs);
-                    let field_snapshot_ty = encoder.encode_builtin_domain_type(
-                        BuiltinDomainKind::MemorySnapshot(field_ty)
-                    )?;
-                    let field_value_snapshot_ty = encoder.encode_builtin_domain_type(
-                        BuiltinDomainKind::ValueSnapshot(field_ty)
-                    )?;
+                    let field_snapshot_ty = encoder
+                        .encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(field_ty))?;
+                    let field_value_snapshot_ty = encoder
+                        .encode_builtin_domain_type(BuiltinDomainKind::ValueSnapshot(field_ty))?;
                     fields.push(FieldLayout {
                         is_visible: field.vis.is_public(),
                         name: format!("v${variant_name}_f${field_name}"),
@@ -233,7 +217,11 @@ fn build_adt_layout<'v, 'tcx: 'v>(
                         ty: Some(field_ty),
                     });
                 }
-                variants.push(VariantLayout { name: variant_name, discriminant, fields });
+                variants.push(VariantLayout {
+                    name: variant_name,
+                    discriminant,
+                    fields,
+                });
             }
         }
         _ => error_internal!("expected tuple or ADT type; got {:?}", ty),
@@ -243,21 +231,19 @@ fn build_adt_layout<'v, 'tcx: 'v>(
 }
 
 fn build_reference_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<TypeLayout<'tcx>> {
     let ty::TyKind::Ref(_region, target_ty, _mutability) = ty.kind() else {
         error_internal!("expected reference type; got {:?}", ty);
     };
 
-    let target_address_ty = encoder.encode_builtin_domain_type(
-        BuiltinDomainKind::Address(*target_ty)
-    )?;
-    let target_snapshot_ty = encoder.encode_builtin_domain_type(
-        BuiltinDomainKind::MemorySnapshot(*target_ty)
-    )?;
-    let target_value_snapshot_ty = encoder.encode_builtin_domain_type(
-        BuiltinDomainKind::ValueSnapshot(*target_ty)
-    )?;
+    let target_address_ty =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::Address(*target_ty))?;
+    let target_snapshot_ty =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::MemorySnapshot(*target_ty))?;
+    let target_value_snapshot_ty =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::ValueSnapshot(*target_ty))?;
     let fields = vec![
         FieldLayout {
             is_visible: true,
@@ -284,24 +270,22 @@ fn build_reference_layout<'v, 'tcx: 'v>(
 }
 
 fn build_pointer_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<TypeLayout<'tcx>> {
     let &ty::TyKind::RawPtr(ty::TypeAndMut { ty: target_ty, .. }) = ty.kind() else {
         error_internal!("expected raw pointer type; got {:?}", ty);
     };
 
-    let target_address_ty = encoder.encode_builtin_domain_type(
-        BuiltinDomainKind::Address(target_ty)
-    )?;
-    let fields = vec![
-        FieldLayout {
-            is_visible: true,
-            name: "target".to_string(),
-            mem_snapshot_ty: target_address_ty.clone(),
-            value_snapshot_ty: Some(target_address_ty),
-            ty: None,
-        }
-    ];
+    let target_address_ty =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::Address(target_ty))?;
+    let fields = vec![FieldLayout {
+        is_visible: true,
+        name: "target".to_string(),
+        mem_snapshot_ty: target_address_ty.clone(),
+        value_snapshot_ty: Some(target_address_ty),
+        ty: None,
+    }];
 
     let variants = vec![VariantLayout {
         name: "raw_pointer".to_string(),
@@ -312,7 +296,8 @@ fn build_pointer_layout<'v, 'tcx: 'v>(
 }
 
 fn build_unsafe_cell_layout<'v, 'tcx: 'v>(
-    encoder: &Encoder<'v, 'tcx>, ty: ty::Ty<'tcx>
+    encoder: &Encoder<'v, 'tcx>,
+    ty: ty::Ty<'tcx>,
 ) -> EncodingResult<TypeLayout<'tcx>> {
     let ty::TyKind::Adt(adt_def, substs) = ty.kind() else {
         error_internal!("expected unsafe cell type; got {:?}", ty);
@@ -323,9 +308,8 @@ fn build_unsafe_cell_layout<'v, 'tcx: 'v>(
     let content_field = &adt_def.variants().iter().next().unwrap().fields[0];
     let content_ty = content_field.ty(encoder.env().tcx(), substs);
 
-    let content_address_ty = encoder.encode_builtin_domain_type(
-        BuiltinDomainKind::Address(content_ty)
-    )?;
+    let content_address_ty =
+        encoder.encode_builtin_domain_type(BuiltinDomainKind::Address(content_ty))?;
     let fields = vec![
         // FieldLayout {
         //     is_visible: false,
