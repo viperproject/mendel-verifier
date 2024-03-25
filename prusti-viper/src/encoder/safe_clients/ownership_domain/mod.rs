@@ -574,7 +574,7 @@ pub fn build_ownership_domain<'v, 'tcx: 'v>(
         );
         implied_framing_axioms.push(vir::DomainAxiom::new(
             &domain_name,
-            format!("Framing implied by ownership: NoWriteRef && Local"),
+            "Framing implied by ownership: NoWriteRef && Local".to_string(),
             format!("framing_across_stmt_implied_by_ownership_NoWriteRef_and_Local_of_{ty_name}"),
             body,
         ));
