@@ -26,9 +26,10 @@ mod foo {
     #[prusti::spec_id = "$(NUM_UUID)"]
     fn prusti_pred_item_pred1_$(NUM_UUID)(a: bool)
         -> bool {
-        !!((forall((),
-                                #[prusti::spec_only] |b: bool| -> bool
-                                    { ((a == b): bool) })): bool)
+        let prusti_result: bool =
+            forall((),
+                #[prusti::spec_only] |b: bool| -> bool { ((a == b): bool) });
+        prusti_result
     }
     #[allow(unused_must_use, unused_variables, dead_code)]
     #[prusti::pred_spec_id_ref = "$(NUM_UUID)"]
@@ -44,7 +45,8 @@ non_snake_case)]
 #[prusti::spec_only]
 #[prusti::spec_id = "$(NUM_UUID)"]
 fn prusti_pre_item_test_pub_pred_$(NUM_UUID)() -> bool {
-    !!((foo::pred1(true)): bool)
+    let prusti_result: bool = foo::pred1(true);
+    prusti_result
 }
 #[prusti::pre_spec_id_ref = "$(NUM_UUID)"]
 #[prusti::specs_version = $(SPECS_VERSION)]

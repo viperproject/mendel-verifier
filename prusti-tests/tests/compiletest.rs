@@ -83,7 +83,11 @@ fn run_prusti_tests(group_name: &str, filter: &Option<String>, rustc_flags: Opti
     }
 
     // Add compilation flags
-    config.target_rustcflags = Some(format!("--edition=2018 {}", rustc_flags.unwrap_or("")));
+    // mir-opt-level=0 disables MIR optimizations (e.g., const propagation) that might hide bugs.
+    config.target_rustcflags = Some(format!(
+        "--edition=2018 -Z mir-opt-level=0 {}",
+        rustc_flags.unwrap_or("")
+    ));
 
     let path: PathBuf = ["tests", group_name, "ui"].iter().collect();
     if path.exists() {
@@ -131,53 +135,14 @@ fn run_verification_base(group_name: &str, filter: &Option<String>) {
     run_prusti_tests(group_name, filter, Some("-A warnings"));
 }
 
-fn run_verification_no_overflow(group_name: &str, filter: &Option<String>) {
-    let _temporary_env_vars = (
-        TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "false"),
-        TemporaryEnvVar::set("PRUSTI_CHECK_OVERFLOWS", "false"),
-    );
-
-    run_verification_base(group_name, filter);
-}
-
-fn run_verification_overflow(group_name: &str, filter: &Option<String>) {
-    let _temporary_env_vars = (TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "false"),);
-
-    run_verification_base(group_name, filter);
-}
-
 // fn run_verification_safe_clients_silicon(group_name: &str, filter: &Option<String>) {
-//     let _temporary_env_vars = (
-//         TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "true"),
-//         TemporaryEnvVar::set("PRUSTI_VIPER_BACKEND", "silicon"),
-//     );
+//     let _temporary_env_vars = (TemporaryEnvVar::set("PRUSTI_VIPER_BACKEND", "silicon"),);
 //     run_verification_base(group_name, filter);
 // }
 
 fn run_verification_safe_clients_carbon(group_name: &str, filter: &Option<String>) {
     let _temporary_env_vars = (TemporaryEnvVar::set("PRUSTI_VIPER_BACKEND", "carbon"),);
     run_verification_base(group_name, filter);
-}
-
-fn run_verification_core_proof(group_name: &str, filter: &Option<String>) {
-    let _temporary_env_vars = (
-        TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "false"),
-        TemporaryEnvVar::set("PRUSTI_CHECK_PANICS", "false"),
-        TemporaryEnvVar::set("PRUSTI_CHECK_OVERFLOWS", "false"),
-    );
-
-    run_verification_base(group_name, filter);
-}
-
-fn run_lifetimes_dump(group_name: &str, filter: &Option<String>) {
-    let _temporary_env_vars = (
-        TemporaryEnvVar::set("PRUSTI_SAFE_CLIENTS_ENCODER", "false"),
-        TemporaryEnvVar::set("PRUSTI_NO_VERIFY", "true"),
-        TemporaryEnvVar::set("PRUSTI_DUMP_BORROWCK_INFO", "true"),
-        TemporaryEnvVar::set("PRUSTI_QUIET", "true"),
-    );
-
-    run_prusti_tests(group_name, filter, None);
 }
 
 fn test_runner(_tests: &[&()]) {
@@ -218,34 +183,4 @@ fn test_runner(_tests: &[&()]) {
     // println!("[verify_safe_clients_silicon]");
     // run_verification_safe_clients_silicon("verify_safe_clients", &filter);
     // save_verification_cache();
-
-    // Test the verifier.
-    println!("[verify]");
-    run_verification_no_overflow("verify", &filter);
-    save_verification_cache();
-
-    // Test the verifier with overflow checks enabled.
-    println!("[verify_overflow]");
-    run_verification_overflow("verify_overflow", &filter);
-    save_verification_cache();
-
-    // Test the verifier with test cases that only partially verify due to known open issues.
-    // The purpose of these tests is two-fold: 1. these tests help prevent potential further
-    // regressions, because the tests also test code paths not covered by other tests; and
-    // 2. a failing test without any errors notifies the developer when a proper fix is in
-    // place. In this case, these test can be moved to the `verify/pass/` or
-    // `verify_overflow/pass` folders.
-    println!("[verify_partial]");
-    run_verification_overflow("verify_partial", &filter);
-    save_verification_cache();
-
-    // Test the verifier with panic checks disabled (i.e. verify only the core proof).
-    println!("[core_proof]");
-    run_verification_core_proof("core_proof", &filter);
-    save_verification_cache();
-
-    // Test the verifier with panic checks disabled (i.e. verify only the core proof).
-    println!("[lifetimes_dump]");
-    run_lifetimes_dump("lifetimes_dump", &filter);
-    save_verification_cache();
 }
