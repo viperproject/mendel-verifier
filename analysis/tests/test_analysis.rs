@@ -61,22 +61,26 @@ fn test_runner(_tests: &[&()]) {
     );
     run_tests(
         "ui",
-        "tests/test_cases/definitely_accessible",
-        vec!["--analysis=DefinitelyAccessibleAnalysis".into()],
-    );
-    run_tests(
-        "ui",
         "tests/test_cases/definitely_blocked",
         vec!["--analysis=DefinitelyUnreachableAnalysis".into()],
     );
-    run_tests(
-        "ui",
-        "tests/test_cases/framing",
-        vec!["--analysis=FramingAnalysis".into()],
-    );
-    run_tests(
-        "ui",
-        "tests/test_cases/locally_shared",
-        vec!["--analysis=LocallySharedAnalysis".into()],
-    );
+    // These tests are disabled because on macOS the compiler generates slightly different MIRs
+    // than on Linux and Windows, which causes some tests (`mutex*.rs` and `drop.rs`) to fail.
+    if !cfg!(target_os = "macos") {
+        run_tests(
+            "ui",
+            "tests/test_cases/definitely_accessible",
+            vec!["--analysis=DefinitelyAccessibleAnalysis".into()],
+        );
+        run_tests(
+            "ui",
+            "tests/test_cases/framing",
+            vec!["--analysis=FramingAnalysis".into()],
+        );
+        run_tests(
+            "ui",
+            "tests/test_cases/locally_shared",
+            vec!["--analysis=LocallySharedAnalysis".into()],
+        );
+    }
 }
