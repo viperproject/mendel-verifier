@@ -20,7 +20,7 @@ fn main() {
         // so that one could do `clippy --fix`...
         "#[allow(clippy::uninlined_format_args)]".to_string(),
         "#[rustfmt::skip]".to_string(),
-        format!("#[path = \"{}\"]", gen_dir.join("mod.rs").display()),
+        format!("#[path = r\"{}\"]", gen_dir.join("mod.rs").display()),
         "mod gen;".to_string(),
     ]
     .join("\n");

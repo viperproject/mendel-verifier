@@ -830,7 +830,7 @@ fn main() {
     // Write a file that imports the generated module by absolute path.
     let import_src = vec![
         "#[rustfmt::skip]".to_string(),
-        format!("#[path = \"{}\"]", generated_dir.join("mod.rs").display()),
+        format!("#[path = r\"{}\"]", generated_dir.join("mod.rs").display()),
         "pub mod wrappers;".to_string(),
     ]
     .join("\n");
