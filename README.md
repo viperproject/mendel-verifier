@@ -40,7 +40,7 @@ The test suite and evaluation can be found in the [`prusti-tests/tests/verify_sa
 
 This tool provides the following annotation to declare the implicit capabilities of library types with interior mutability:
 ```rust
-#[capabile(<source> if <condition> => <capability>(<target>))]
+#[capable(<source> if <condition> => <capability>(<target>))]
 impl <type> {}
 ```
 The meaning of this annotation is the following: As long as `<condition>` holds (`true` if omitted), `<source>` holds a capability `<capability>` for the memory location `<target>`.
