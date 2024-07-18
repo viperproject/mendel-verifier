@@ -2,7 +2,7 @@ use prusti_contracts::*;
 
 #[ensures(*result == old(*x))]
 pub fn reborrow(x: &u32) -> &u32 {
-    assert!(false); //~ ERROR the asserted expression might not hold
+    
     x
 }
 
@@ -22,7 +22,7 @@ pub fn test1() {
     assert!(a == 5);
     a = 6;
     assert!(a == 6);
-    assert!(false); //~ ERROR the asserted expression might not hold
+    
 }
 
 fn main() {

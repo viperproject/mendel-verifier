@@ -10,7 +10,7 @@ fn test() {
         i < 55
     } {
         i += 1;
-        assert!(false); // Unreachable
+        
     }
 
     assert!(i == 55);

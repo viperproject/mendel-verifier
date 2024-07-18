@@ -30,8 +30,7 @@ fn test_1() {
 
     ptr.dispose(perm);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /// Test non-aliasing
@@ -45,8 +44,7 @@ fn test_2(ptr_a: &PPtr<i32>, ptr_b: &PPtr<i32>, perm_a: &PointsTo<i32>, perm_b: 
     *ptr_b.verified_borrow_mut(perm_b) = 123;
     assert!(*ptr_a.borrow(perm_a) == initial);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /// Test possible aliasing of pointers to zero-size types

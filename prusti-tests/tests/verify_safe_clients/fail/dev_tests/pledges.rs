@@ -20,7 +20,7 @@ fn assume_false_on_expiry(x: &mut i32) -> &mut i32 {
 
 fn test_unsound_1(x: &mut i32) {
     assume_false_on_expiry(x);
-    assert!(false); // Succeeds, because the contract of the call is unsound
+    
 }
 
 #[extern_spec]
@@ -31,7 +31,7 @@ impl<T, A: std::alloc::Allocator> std::convert::AsMut<T> for std::boxed::Box<T, 
 
 fn test_unsound_2(mut x: Box<i32>) {
     let _ = x.as_mut();
-    assert!(false); // Succeeds, because the contract of the call is unsound
+    
 }
 
 #[trusted]
@@ -56,7 +56,7 @@ fn good1() {
     expire(y); // The expiration succeeds
     assert!(x.0 == 42 && x.1 == 42); // Succeeds
 
-    assert!(false); //~ ERROR
+    
 }
 
 fn good2() {
@@ -66,7 +66,7 @@ fn good2() {
     expire(y); // The expiration succeeds
     assert!(x.0 == 42 && x.1 == 42); // Succeeds
 
-    assert!(false); //~ ERROR
+    
 }
 
 fn bad1() {

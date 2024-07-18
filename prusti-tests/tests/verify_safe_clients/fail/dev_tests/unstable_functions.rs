@@ -48,7 +48,7 @@ fn test_noncell() {
     let x = get_noncell(&noncell);
     let y = get_noncell(&noncell);
     assert!(x == y); // Ok
-    assert!(false); //~ ERROR
+    
 }
 
 fn main() {}

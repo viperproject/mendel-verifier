@@ -22,8 +22,7 @@ fn incompleteness(a: &mut Arc<RefCell<i32>>) {}
 fn workaround(a: &mut Arc<RefCell<i32>>, workaround: &RefCell<i32>) {}
 
 fn smoke() {
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn main(){}

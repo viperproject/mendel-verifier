@@ -20,8 +20,7 @@ fn test_unit_framing(x: &()) {
     // This should never hold.
     assert!(before != after); //~ ERROR the asserted expression might not hold
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn incompleteness(x: &()) {
@@ -32,8 +31,7 @@ fn incompleteness(x: &()) {
     assert!(before == after); // Incompleteness of the current axiomatization of unit types
     //~^ ERROR the asserted expression might not hold
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn main() {}

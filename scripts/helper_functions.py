@@ -5,7 +5,7 @@ import os
 import sys
 import subprocess
 from reporting import (
-    ensure, report
+    ensure, report, error
 )
 
 
@@ -55,7 +55,8 @@ def set_env_variables(env, variables):
 
 def get_linux_env():
     """Get environment variables for Linux."""
-    java_home = get_var_or('JAVA_HOME', default_linux_java_loc())
+    # java_home = get_var_or('JAVA_HOME', default_linux_java_loc())
+    java_home = "/nix/store/scrkpgggrq8ll8lm2y9sfg9dx31sv9hm-zulu-ca-jdk-21.0.2/lib/openjdk"
     ensure(java_home is not None, JAVA_NOT_FOUND_ERR_MSG)
     variables = [
         ('JAVA_HOME', java_home),

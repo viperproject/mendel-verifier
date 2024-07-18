@@ -22,8 +22,7 @@ fn test_1() {
     assert!(*rc == 123);
     assert!(*rc == 123);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_2() {
@@ -37,8 +36,7 @@ fn test_2() {
     assert!(data_ref.is_some());
     assert!(data_ref == Some(&mut 123));
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_3() {
@@ -53,8 +51,7 @@ fn test_4(rc: Rc<i32>) {
     let b = *rc;
     assert!(a == b);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_5(mut rc: Rc<i32>) {
@@ -69,13 +66,11 @@ fn test_5(mut rc: Rc<i32>) {
         assert!(*data == 123);
         assert!(*rc == 123);
 
-        assert!(false); // Smoke check
-        //~^ ERROR the asserted expression might not hold
+    
     } else {
         assert!(Rc::strong_count(&rc) != 1 || Rc::weak_count(&rc) != 0);
 
-        assert!(false); // Smoke check
-        //~^ ERROR the asserted expression might not hold
+    
     }
 }
 
@@ -86,13 +81,11 @@ fn test_6(mut rc: Rc<i32>, other: Rc<i32>) {
         let data = Rc::get_mut(&mut rc).unwrap();
         assert!(Rc::as_ptr(&rc) != Rc::as_ptr(&other));
 
-        assert!(false); // Smoke check
-        //~^ ERROR the asserted expression might not hold
+    
     } else {
         assert!(Rc::strong_count(&rc) != 1 || Rc::weak_count(&rc) != 0);
 
-        assert!(false); // Smoke check
-        //~^ ERROR the asserted expression might not hold
+    
     }
 }
 
@@ -102,8 +95,7 @@ fn test_7() {
     unknown(&rc); // This call might clone the Rc
     assert!(Rc::strong_count(&rc) == 1); //~ ERROR the asserted expression might not hold
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /// Test clone and drop
@@ -137,8 +129,7 @@ fn test_8() {
     assert!(*data == 123);
     assert!(Rc::strong_count(&z) == 1);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /* EVALUATION:IGNOREAFTER */

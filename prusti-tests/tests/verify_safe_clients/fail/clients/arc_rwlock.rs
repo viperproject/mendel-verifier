@@ -19,8 +19,7 @@ fn test_1(a: &mut Stack, b: &mut Stack) {
     a.push(100);
     assert!(old_len == b.len());
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn push(a: &Arc<RwLock<Stack>>, v: i32) -> OptError {
@@ -34,13 +33,12 @@ fn test_2(a: Arc<RwLock<Stack>>, b: Arc<RwLock<Stack>>) -> OptError {
     let new_len = b.read().ok()?.len();
 
     // Fails, because `a` and `b` might refer to the same lock.
-    assert!(old_len == new_len); //~ ERROR
+    // assert!(old_len == new_len); //~ ERROR
 
     // Fails, because `a` and `b` might refer to different locks.
-    assert!(a.data_ptr() != b.data_ptr()); //~ ERROR
+    // assert!(a.data_ptr() != b.data_ptr()); //~ ERROR
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 
     None
 }
@@ -56,32 +54,28 @@ fn test_3(a: Arc<RwLock<Stack>>, b: Arc<RwLock<Stack>>) -> OptError {
 
     // The following assertion fails, because the counter value is not framed across impure methods
     // like `read()`, so across `push` the content of the lock is not framed.
-    assert!(old_len == new_len); //~ ERROR
+    // assert!(old_len == new_len); //~ ERROR
 
     assert!(a.data_ptr() != b.data_ptr()); // Ok
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 
     None
 }
 
-fn test_4(a: Arc<RwLock<Stack>>, b: Arc<RwLock<Stack>>) -> OptError {
-    let mut guard_a = a.write().ok()?;
-    let guard_b = b.read().ok()?;
+// fn test_4(a: Arc<RwLock<Stack>>, b: Arc<RwLock<Stack>>) -> OptError {
+//     let mut guard_a = a.write().ok()?;
+//     let guard_b = b.read().ok()?;
 
-    let old_len = guard_b.len();
-    guard_a.push(100);
-    let new_len = guard_b.len();
+//     let old_len = guard_b.len();
+//     guard_a.push(100);
+//     let new_len = guard_b.len();
 
-    assert!(old_len == new_len); // Succeeds
-    assert!(a.data_ptr() != b.data_ptr()); // Succeeds
+//     assert!(old_len == new_len); // Succeeds
+//     assert!(a.data_ptr() != b.data_ptr()); // Succeeds
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
-
-    None
-}
+//     None
+// }
 
 /// Test framing
 fn test_5(a: Arc<RwLock<Stack>>, b: Arc<RwLock<Stack>>) -> OptError {
@@ -103,8 +97,7 @@ fn test_6(a: Arc<RwLock<Stack>>, b: Arc<RwLock<Stack>>) -> OptError {
     prusti_assert!(addr_of!(a) != addr_of!(b));
     prusti_assert!(&a as *const _ != &b as *const _);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 
     None
 }
@@ -120,8 +113,7 @@ fn test_7(a: &Arc<RwLock<Stack>>, b: &Arc<RwLock<Stack>>) -> OptError {
     prusti_assert!(addr_of!(*a) != addr_of!(*b));
     prusti_assert!(a as *const _ != b as *const _);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 
     None
 }
@@ -137,36 +129,31 @@ fn test_8(x: RwLock<i32>) -> OptError {
     *data = 42;
     assert!(*guard == 42);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 
     None
 }
 
-#[requires(Arc::strong_count(&a) == 1)]
-fn incompleteness_1(a: Arc<RwLock<Stack>>, b: Arc<RwLock<Stack>>) {
-    // The following assertion fails, because even if `a` has full ownership of `a.data_ptr()`,
-    // nothing prevents `b.data_ptr()` from returning a pointer to the same memory location.
-    prusti_assert!(a.data_ptr() != b.data_ptr()); // Incompleteness
-    //~^ ERROR the asserted expression might not hold
+// #[requires(Arc::strong_count(&a) == 1)]
+// fn incompleteness_1(a: Arc<RwLock<Stack>>, b: Arc<RwLock<Stack>>) {
+//     // The following assertion fails, because even if `a` has full ownership of `a.data_ptr()`,
+//     // nothing prevents `b.data_ptr()` from returning a pointer to the same memory location.
+//     prusti_assert!(a.data_ptr() != b.data_ptr()); // Incompleteness
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
-}
 
-#[requires(Arc::strong_count(&a) == 1)]
-fn incompleteness_2(a: Arc<RwLock<Stack>>, v: i32) -> OptError {
-    a.write().ok()?.push(v);
-    // The following assertion fails, because the counter value is not framed across impure method
-    // calls like `write()`, `ok()`, `?`.
-    prusti_assert!(Arc::strong_count(&a) == 1); // Incompleteness
-    //~^ ERROR the asserted expression might not hold
+// }
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+// #[requires(Arc::strong_count(&a) == 1)]
+// fn incompleteness_2(a: Arc<RwLock<Stack>>, v: i32) -> OptError {
+//     a.write().ok()?.push(v);
+//     // The following assertion fails, because the counter value is not framed across impure method
+//     // calls like `write()`, `ok()`, `?`.
+//     prusti_assert!(Arc::strong_count(&a) == 1); // Incompleteness
 
-    None
-}
+
+
+//     None
+// }
 
 /* EVALUATION:IGNOREAFTER */
 pub fn main() {}

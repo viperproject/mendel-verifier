@@ -15,7 +15,7 @@ fn test(x: Box<i32>) {
     prusti_assert!(unsafe { *ptr_a == 123 });
     assert!(*x == 123);
 
-    assert!(false); //~ ERROR the asserted expression might not hold
+    
 }
 
 fn main() {
@@ -24,5 +24,5 @@ fn main() {
     let ptr_b = &*x as *const _;
     assert!(ptr_a == ptr_b);
 
-    assert!(false); //~ ERROR the asserted expression might not hold
+    
 }

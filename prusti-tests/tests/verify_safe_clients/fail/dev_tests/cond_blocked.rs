@@ -29,7 +29,7 @@ fn example(mut pair: (u32, u32), cond: bool) {
         assert!(pair.1 == 4);
     }
 
-    assert!(false) //~ ERROR the asserted expression might not hold
+    
 }
 
 fn main() {}

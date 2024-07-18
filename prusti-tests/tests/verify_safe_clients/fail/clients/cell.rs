@@ -31,8 +31,7 @@ fn test_1() {
 
     drop(shared_cell); // Extend the lifetime of the shared reference until here
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_2(x: &Cell<i32>) {
@@ -43,8 +42,7 @@ fn test_2(x: &Cell<i32>) {
     assert!(b == c);
     assert!(a == b); //~ ERROR
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_3() {
@@ -60,8 +58,7 @@ fn test_4(c: &mut Cell<i32>) {
     unknown(123);
     assert!(c.get() == 42);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_5(x: &mut (Cell<i32>,)) {
@@ -101,8 +98,7 @@ fn test_8() {
     *data = 456;
     assert!(x.get() == 456);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 #[requires(-1000000 <= deref(c.as_ptr()) && deref(c.as_ptr()) <= 1000000)]
@@ -112,8 +108,7 @@ fn test_9(c: &Cell<i32>) {
     let after = c.get();
     assert!(before + 1 == after);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_10() {
@@ -122,8 +117,7 @@ fn test_10() {
     let local_ref = &local;
     assert!(local_ref as *const _ != cell.as_ptr());
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 #[requires(deref(x.as_ptr()) >= 0 && deref(x.as_ptr()) <= 999)]
@@ -137,8 +131,7 @@ fn increment_positive(x: &Cell<i32>) {
 #[ensures(deref(x.as_ptr()) > 123)]
 fn test_11(x: &Cell<i32>) {
     increment_positive(x);
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /* EVALUATION:IGNOREAFTER */

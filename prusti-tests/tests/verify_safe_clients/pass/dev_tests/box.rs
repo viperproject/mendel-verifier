@@ -1,10 +1,24 @@
-fn test(
-    y: Box<u32>,
-    z: Box<Box<u32>>,
-) {}
+#![feature(try_trait_v2)]
+#![feature(allocator_api)]
+use prusti_contracts::*;
+use std::ops::Deref;
 
-fn main() {
-    let x: u32 = 123;
-    let y = Box::new(x);
-    let z = Box::new(y);
+#[path = "../libraries/mod.rs"]
+mod libraries;
+use libraries::*;
+/* EVALUATION:IGNOREBEFORE */
+
+fn test_1() {
+    let mut x = Box::new(123);
+    let y = x.as_mut();
+    assert!(*y == 123);
+    let z = y;
+    assert!(*z == 123);
+    *z = 42;
+    assert!(*x.deref() == 42);
+
+
 }
+
+/* EVALUATION:IGNOREAFTER */
+pub fn main() {}

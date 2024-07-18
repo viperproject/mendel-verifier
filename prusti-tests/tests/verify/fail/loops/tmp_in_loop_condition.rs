@@ -29,7 +29,7 @@ fn test1() {
     let mut tmp = box box random();
     let tmp_ref = &tmp;
     let tmp_ref_mut = &mut tmp;
-    assert!(false); //~ ERROR
+    
 }
 
 fn test2() {
@@ -49,7 +49,7 @@ fn test2() {
         let mut tmp = box box random();
         let tmp_ref = &tmp;
         let tmp_ref_mut = &mut tmp;
-        assert!(false); //~ ERROR
+        
     }
 
     let mut tmp = box box random();

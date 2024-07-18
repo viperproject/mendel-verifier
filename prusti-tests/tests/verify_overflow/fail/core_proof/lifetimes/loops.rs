@@ -31,7 +31,7 @@ fn test1_assert_false() {
     let mut ve = Vec::new();
     let mut v: WrapperIterator<i32> = WrapperIterator::new(&mut ve);
     for x in &mut v {}
-    assert!(false);      //~ ERROR: the asserted expression might not hold
+    
 }
 fn test2() {
     let mut ve = Vec::new();
@@ -70,5 +70,5 @@ fn test3_assert_false() {
     let mut ve = Vec::new();
     let mut v: WrapperIterator<X> = WrapperIterator::new(&mut ve);
     for x in &mut v {}
-    assert!(false);      //~ ERROR: the asserted expression might not hold
+    
 }

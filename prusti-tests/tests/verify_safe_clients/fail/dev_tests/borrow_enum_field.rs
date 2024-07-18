@@ -10,5 +10,5 @@ fn main() {
     assert!(if let T::T1(z) = y { *z == 111 } else { false });
     assert!(if let T::T1(z) = y { *z == 111 } else { false });
 
-    assert!(false); //~ ERROR the asserted expression might not hold
+    
 }

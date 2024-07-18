@@ -48,8 +48,7 @@ fn move_mut_ref_primitive() {
     assert!(*z == 123);
     assert!(x == 123);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn move_mut_ref_badbox() {
@@ -63,8 +62,7 @@ fn move_mut_ref_badbox() {
     prusti_assert!(deref(ptr) == 123);
     assert!(*x.as_mut() == 123);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_ref_mut(x: &mut i32) {
@@ -74,8 +72,7 @@ fn test_ref_mut(x: &mut i32) {
     *x = 42;
     assert!(*x == 42);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn main() {}

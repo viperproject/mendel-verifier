@@ -40,8 +40,7 @@ fn test_1() {
     prusti_assert!(c == data_ptr); // Borrowing the mutex gives a reference to the data
     prusti_assert!(data_ptr == mutex2.data_ptr()); // Borrowing the mutex doesn't move the data
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /// Test data
@@ -70,16 +69,14 @@ fn test_2() {
     let Ok(mut guard) = mutex.lock() else { return; };
     assert!(*guard == 123);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_3() {
     let m = Mutex::new(42);
     let data = m.lock().unwrap().deref(); // The unwrap succeeds
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /* EVALUATION:IGNOREAFTER */

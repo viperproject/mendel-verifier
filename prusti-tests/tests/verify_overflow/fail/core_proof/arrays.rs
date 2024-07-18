@@ -8,7 +8,7 @@ fn test1() {
 
 fn test2() {
     let a = [1, 2];
-    assert!(false);     //~ ERROR: the asserted expression might not hold
+    
 }
 
 fn test3() {

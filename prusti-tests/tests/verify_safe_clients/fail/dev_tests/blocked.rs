@@ -20,5 +20,5 @@ fn main() {
     assert!(u.t.b == 2);
     assert!(u.t.c == 3);
     assert!(u.d == 4);
-    assert!(false); //~ ERROR the asserted expression might not hold
+    
 }

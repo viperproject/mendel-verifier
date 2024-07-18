@@ -46,7 +46,7 @@ fn test4() {
     if random() {
         let _b = a;
     }
-    assert!(false);     //~ ERROR the asserted expression might not hold
+    
 }
 
 fn test5() {

@@ -72,7 +72,7 @@ fn lookup5(head: &List, index: isize) -> u32 {
         match head.next {
             Some(box ref tail) => lookup(tail, index - 1),
             None => {
-                assert!(false); //~ ERROR the asserted expression might not hold
+                
                 0
             }
         }

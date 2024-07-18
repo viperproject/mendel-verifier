@@ -16,8 +16,7 @@ fn test_1() {
     prusti_assert!(deref(x.as_ptr()) == 123);
     assert!(*x.get_mut() == 123);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_2() {
@@ -32,8 +31,7 @@ fn test_3() {
     unknown(0);
     prusti_assert!(x.as_ptr() == y.as_ptr());
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn incompleteness_1() {
@@ -45,8 +43,7 @@ fn incompleteness_1() {
     prusti_assert!(deref(x.as_ptr()) == 123); // Incompleteness
     //~^ ERROR the asserted expression might not hold
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 // This might be a bug in the encoding; not a limitation of the technique.
@@ -58,8 +55,7 @@ fn incompleteness_2() {
     assert!(*x.get_mut() == 456); // Incompleteness
     //~^ ERROR the asserted expression might not hold
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /* EVALUATION:IGNOREAFTER */

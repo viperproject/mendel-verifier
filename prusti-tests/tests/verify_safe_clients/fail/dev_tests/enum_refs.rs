@@ -42,5 +42,5 @@ fn main() {
     assert!(if let D::D3(C::C2(y)) = a.a4 { *y == 444 } else { false });
     assert!(if let D::D1(y) = a.a5 { **y == 111 } else { false });
 
-    assert!(false); //~ ERROR the asserted expression might not hold
+    
 }

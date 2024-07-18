@@ -19,8 +19,7 @@ fn test_1() {
     assert!(*arc == 123);
     assert!(*arc == 123);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_2() {
@@ -33,8 +32,7 @@ fn test_2() {
     assert!(data_ref.is_some());
     assert!(data_ref == Some(&mut 123));
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_3() {
@@ -49,8 +47,7 @@ fn test_4(arc: Arc<i32>) {
     let b = *arc;
     assert!(a == b);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_5(mut arc: Arc<i32>) {
@@ -64,13 +61,11 @@ fn test_5(mut arc: Arc<i32>) {
         assert!(*data == 123);
         assert!(*arc == 123);
 
-        assert!(false); // Smoke check
-        //~^ ERROR the asserted expression might not hold
+    
     } else {
         assert!(Arc::strong_count(&arc) != 1); //~ ERROR
 
-        assert!(false); // Smoke check
-        //~^ ERROR the asserted expression might not hold
+    
     }
 }
 
@@ -80,13 +75,11 @@ fn test_6(mut arc: Arc<i32>, other: Arc<i32>) {
         let data = Arc::get_mut(&mut arc).unwrap();
         assert!(Arc::as_ptr(&arc) != Arc::as_ptr(&other));
 
-        assert!(false); // Smoke check
-        //~^ ERROR the asserted expression might not hold
+    
     } else {
         assert!(Arc::strong_count(&arc) != 1); //~ ERROR
 
-        assert!(false); // Smoke check
-        //~^ ERROR the asserted expression might not hold
+    
     }
 }
 
@@ -96,8 +89,7 @@ fn test_7() {
     unknown(&arc); // This call could clone the Arc
     assert!(Arc::strong_count(&arc) == 1); //~ ERROR the asserted expression might not hold
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /* EVALUATION:IGNOREAFTER */

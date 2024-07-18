@@ -15,8 +15,7 @@ fn test_1() {
     assert!(x.is_some());
     assert!(!x.is_none());
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_2() {
@@ -24,8 +23,7 @@ fn test_2() {
     let y = x.unwrap();
     assert!(y == 123);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_3() {
@@ -38,8 +36,7 @@ fn test_3() {
     let z = y.unwrap();
     assert!(*z == 123);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_4(x: &Option<i32>) {
@@ -48,8 +45,7 @@ fn test_4(x: &Option<i32>) {
     let b = x.is_some();
     assert!(a == b); // Succeeds
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_5() {

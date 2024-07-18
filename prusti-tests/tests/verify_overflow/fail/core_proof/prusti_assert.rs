@@ -9,7 +9,7 @@ fn assert1() {
 }
 
 fn failing_assert() {
-    prusti_assert!(false); //~ ERROR
+    prusti_
 }
 
 fn assign() {

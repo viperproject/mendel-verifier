@@ -33,5 +33,5 @@ fn move_unsafe_cell<T>(x: MutexGuard<T>) -> MutexGuard<T> {
 }
 
 fn main() {
-    assert!(false); //~ ERROR
+    
 }

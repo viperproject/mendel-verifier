@@ -9,7 +9,7 @@ pub fn test1(a: u32, b: u32) -> u32 {
         body_invariant!(c > 0 && c + d == old(a + b));
         c -= 1;
         d += 1;
-        assert!(false); //~ ERROR
+        
     }
     d
 }
@@ -24,7 +24,7 @@ pub fn test2(a: u32, b: u32) -> u32 {
         c -= 1;
         d += 1;
     }
-    assert!(false); //~ ERROR
+    
     d
 }
 

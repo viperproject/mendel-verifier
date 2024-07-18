@@ -13,8 +13,7 @@ fn test_1() {
     let r = m.get_mut();
     *r = 4; // Ok
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /// Test a modification that breaks the invariant

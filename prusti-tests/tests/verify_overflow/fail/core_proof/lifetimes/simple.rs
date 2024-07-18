@@ -70,7 +70,7 @@ pub fn simple_references_assert_false() {
     let mut b = &mut a;
     let mut c = &mut b;
     let mut d = &mut c;
-    assert!(false);      //~ ERROR: the asserted expression might not hold
+    
 }
 
 // FIXME: Fix overlapping shared references

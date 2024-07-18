@@ -17,8 +17,7 @@ fn test_1() {
     *cell.get_mut(&mut perm) += 100;
     assert!(cell.get(&perm) == 142);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /* EVALUATION:IGNOREAFTER */

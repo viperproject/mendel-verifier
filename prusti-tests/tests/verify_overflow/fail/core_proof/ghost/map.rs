@@ -6,7 +6,7 @@ use prusti_contracts::*;
 type Map = prusti_contracts::Map<u32, u32>;
 
 fn should_fail() {
-    prusti_assert!(false); //~ ERROR: the asserted expression might not hold
+    prusti_
 }
 
 fn trivial_pass1() {

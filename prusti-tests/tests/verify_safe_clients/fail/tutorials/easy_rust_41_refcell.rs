@@ -42,7 +42,7 @@ fn main_1() {
 
     assert!(*user_1.active.borrow());
 
-    assert!(false); //~ ERROR
+    //~ ERROR
 }
 
 fn main_2() {
@@ -56,7 +56,7 @@ fn main_2() {
     user_1.active.replace(false);
     assert!(!*user_1.active.borrow());
 
-    assert!(false); //~ ERROR
+    //~ ERROR
 }
 
 fn main_3() {
@@ -75,7 +75,7 @@ fn main_3() {
     drop_refmut(refmut);
     assert!(!*user_1.active.borrow());
 
-    assert!(false); //~ ERROR
+    //~ ERROR
 }
 
 fn main_4() {

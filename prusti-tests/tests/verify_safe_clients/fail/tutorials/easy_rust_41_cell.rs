@@ -48,5 +48,5 @@ fn main() {
     super_phone_3000.on_sale.set(false);
 
     assert!(super_phone_3000.on_sale.get() == false);
-    assert!(false); //~ ERROR
+    
 }

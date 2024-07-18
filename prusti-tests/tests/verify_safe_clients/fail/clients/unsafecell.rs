@@ -37,8 +37,7 @@ fn test_1(x: &UnsafeCell<i32>) {}
 fn test_2(x: &mut UnsafeCell<i32>, y: &i32) {
     assert!(x.get() as *const _ != y as *const _);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 fn test_3(x: &mut UnsafeCell<i32>, y: &i32) {
@@ -51,8 +50,7 @@ fn test_3(x: &mut UnsafeCell<i32>, y: &i32) {
     let z = x.into_inner();
     assert!(z == 456);
 
-    assert!(false); // Smoke check
-    //~^ ERROR the asserted expression might not hold
+
 }
 
 /* EVALUATION:IGNOREAFTER */

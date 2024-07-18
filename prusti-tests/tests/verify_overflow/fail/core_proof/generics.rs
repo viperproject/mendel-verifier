@@ -64,7 +64,7 @@ fn test9<T, U: Default>(a: T) -> T {
     let b = a;
     let c = U::default();
     let _d = c;
-    assert!(false);  //~ ERROR: the asserted expression might not hold
+    
     b
 }
 

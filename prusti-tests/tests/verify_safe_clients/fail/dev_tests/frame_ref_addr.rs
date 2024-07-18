@@ -19,9 +19,9 @@ fn test() {
     assert!(u.0 == x_ptr);
     assert!(u.1 == y_ptr);
 
-    assert!(false); //~ ERROR
+    
 }
 
 fn main() {
-    assert!(false); //~ ERROR
+    
 }

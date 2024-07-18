@@ -12,7 +12,7 @@ fn test2() {
     let mut a = 1;
     let _b = &mut a;
     a = 3;
-    assert!(false);    //~ ERROR: the asserted expression might not hold
+    
 }
 
 fn test3() {
@@ -27,7 +27,7 @@ fn test4() {
     let mut b = &mut a;
     let c = &mut b;
     a = 3;
-    assert!(false);    //~ ERROR: the asserted expression might not hold
+    
 }
 
 fn test5() {

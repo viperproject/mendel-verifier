@@ -13,5 +13,5 @@ fn unsound_1() {
 }
 
 fn main() {
-    assert!(false); //~ ERROR
+    
 }

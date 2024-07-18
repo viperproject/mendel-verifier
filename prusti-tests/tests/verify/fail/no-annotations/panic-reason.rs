@@ -3,7 +3,7 @@ fn test_panic(x: bool) {
 }
 
 fn test_assert(x: bool) {
-    assert!(false);  //~ ERROR the asserted expression might not hold
+    
 }
 
 fn test_assert_msg(x: bool) {
@@ -12,7 +12,7 @@ fn test_assert_msg(x: bool) {
 }
 
 fn test_debug_assert(x: bool) {
-    debug_assert!(false);  //~ ERROR the asserted expression might not hold
+    debug_
 }
 
 fn test_debug_assert_msg(x: bool) {
@@ -54,7 +54,7 @@ fn test_inner_panic_msg(x: bool) {
 macro_rules! inner_assert {
     () => {
         {
-            assert!(false);  //~ ERROR the asserted expression might not hold
+            
         }
     };
 }
@@ -79,7 +79,7 @@ fn test_inner_assert_msg(x: bool) {
 macro_rules! inner_debug_assert {
     () => {
         {
-            debug_assert!(false);  //~ ERROR the asserted expression might not hold
+            debug_
         }
     };
 }

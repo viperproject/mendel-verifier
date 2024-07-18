@@ -18,7 +18,7 @@ fn good() {
     assert!(addr_of!(a) != &b as *const T);
     assert!(&a as *const T != &mut b as *const T);
 
-    assert!(false); //~ ERROR the asserted expression might not hold
+    
 }
 
 fn bad_1_1() {

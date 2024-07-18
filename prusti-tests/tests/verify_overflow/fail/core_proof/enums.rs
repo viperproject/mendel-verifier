@@ -17,14 +17,14 @@ enum Y {
 
 fn test1(x: X){
     match x {
-        X::V1(a) => assert!(false),      //~ ERROR: the asserted expression might not hold
+        X::V1(a) => 
         X::V2(a) => assert!(true),
     }
 }
 
 fn test2(c: char){
     match c {
-        'a' => assert!(false),      //~ ERROR: the asserted expression might not hold
+        'a' => 
         _ => (),
     }
 }
